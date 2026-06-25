@@ -27,6 +27,7 @@ class Scenario:
     xg_low: float
     xg_high: float
     note: str
+    shot_type: str = "open_play"  # serving hint; "penalty" triggers the constant path
 
 
 # A penalty: shot from the spot (12 yards out = x=108), dead center, only the
@@ -40,6 +41,20 @@ PENALTY = Scenario(
     xg_low=0.70,
     xg_high=0.82,
     note="Penalty kick — central, 12 yards, keeper on the line. ~0.76 historically.",
+    shot_type="penalty",
+)
+
+# A gilt-edged open-play chance: 8 yards out, dead center, only the keeper to
+# beat and no defenders in the way. The model should rate this highly.
+CLEAR_CHANCE = Scenario(
+    name="clear_chance",
+    state=GameState(
+        shot_xy=(112.0, 40.0),
+        players=[Player(xy=(119.0, 40.0), team="def", is_gk=True)],
+    ),
+    xg_low=0.30,
+    xg_high=0.95,
+    note="Open-play tap-in range, central, unguarded — a big chance.",
 )
 
 # A near-impossible chance: almost on the goal line but pushed wide toward the
@@ -55,4 +70,4 @@ TIGHT_ANGLE_BYLINE = Scenario(
     note="Shot from the byline at an extreme angle — almost no goal to aim at.",
 )
 
-ALL: list[Scenario] = [PENALTY, TIGHT_ANGLE_BYLINE]
+ALL: list[Scenario] = [PENALTY, TIGHT_ANGLE_BYLINE, CLEAR_CHANCE]
