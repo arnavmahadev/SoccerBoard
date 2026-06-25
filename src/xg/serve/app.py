@@ -14,10 +14,14 @@ Docs: http://127.0.0.1:8000/docs
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+FRONTEND_DIR = Path(__file__).resolve().parents[3] / "frontend"
 
 from xg.data.schema import GameState
 from xg.models.baseline import load_model, predict
@@ -57,3 +61,8 @@ def predict_endpoint(state: GameState, shot_type: str = "open_play") -> PredictR
     """xG for a shot situation. `shot_type=penalty` returns the canonical value."""
     xg = predict(state, shot_type=shot_type)
     return PredictResponse(xg=xg, model=load_model()["name"], shot_type=shot_type)
+
+
+# Serve the interactive frontend at "/" (mounted last so the API routes above
+# and the auto docs take precedence). html=True serves index.html at the root.
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

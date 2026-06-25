@@ -5,6 +5,8 @@ positions of every visible player at the moment of a shot — and served as an
 interactive web app where you drag players around a 2D pitch and watch the xG
 prediction update live.
 
+![demo](reports/demo.png)
+
 ## Architecture principle
 
 The model's input is **player (x, y) coordinates in pitch space + the shot
@@ -28,7 +30,7 @@ model with zero rework.
 - [x] **Phase 4** — MLP (0.274); XGBoost wins on small tabular data → served
 - [x] **Phase 5** — evaluation: ECE 0.027, well calibrated ([report](reports/evaluation.md))
 - [x] **Phase 6** — FastAPI `/predict` + `/health`, schema-validated requests
-- [ ] Phase 7 — interactive draggable-pitch frontend
+- [x] **Phase 7** — draggable SVG pitch, live xG (served from the API)
 - [ ] Phase 8 — deployment (Hugging Face Spaces)
 - [ ] Stretch (post-ship only) — DeepSets net over raw player sets
 

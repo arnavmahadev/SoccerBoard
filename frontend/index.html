@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soccer xG — drag the players</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Expected Goals (xG)</h1>
+    <p>Drag the players. The model re-scores the shot live. Attack is to the right.</p>
+  </header>
+
+  <main>
+    <!-- viewBox IS the pitch coordinate system (StatsBomb 120x80, attacking
+         half shown). SVG user units == pitch units, so dragging yields model
+         coordinates directly. -->
+    <svg id="pitch" viewBox="58 -3 64 86" preserveAspectRatio="xMidYMid meet">
+      <rect x="60" y="0" width="60" height="80" class="grass" />
+      <rect x="60" y="0" width="60" height="80" class="line" fill="none" />
+      <rect x="102" y="18" width="18" height="44" class="line" fill="none" />
+      <rect x="114" y="30" width="6" height="20" class="line" fill="none" />
+      <circle cx="108" cy="40" r="0.5" class="spot" />
+      <line x1="120" y1="36" x2="120" y2="44" class="goal" />
+      <g id="markers"></g>
+    </svg>
+
+    <aside id="panel">
+      <div class="xg-box">
+        <div class="xg-label">xG</div>
+        <div id="xg-value">—</div>
+        <div class="bar"><div id="xg-bar"></div></div>
+      </div>
+      <div class="legend">
+        <span><i class="dot shooter"></i> shooter / ball</span>
+        <span><i class="dot att"></i> attacker</span>
+        <span><i class="dot def"></i> defender</span>
+        <span><i class="dot gk"></i> goalkeeper</span>
+      </div>
+      <div class="controls">
+        <button id="add-def">+ defender</button>
+        <button id="add-att">+ attacker</button>
+        <button id="reset">reset</button>
+      </div>
+      <p id="status" class="status"></p>
+    </aside>
+  </main>
+
+  <script src="pitch.js"></script>
+</body>
+</html>
