@@ -13,6 +13,8 @@ pinned: false
 
 # Soccer xG
 
+**▶ Live demo: https://arnavmahadev-soccer-xg.hf.space**
+
 An expected-goals (xG) model trained on **StatsBomb 360 freeze frames** — the
 positions of every visible player at the moment of a shot — and served as an
 interactive web app where you drag players around a 2D pitch and watch the xG
