@@ -44,7 +44,7 @@ def test_scenario_xg_in_range(scenario):
     predict = _try_import_predict()
     if predict is None:
         pytest.skip("no trained model yet (activates in Phase 3)")
-    xg = predict(scenario.state)
+    xg = predict(scenario.state, shot_type=scenario.shot_type)
     assert scenario.xg_low <= xg <= scenario.xg_high, (
         f"{scenario.name}: xG={xg:.3f} outside "
         f"[{scenario.xg_low}, {scenario.xg_high}] — {scenario.note}"

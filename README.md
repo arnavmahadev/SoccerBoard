@@ -22,9 +22,9 @@ model with zero rework.
 ## Status
 
 - [x] **Phase 0** — setup + locked input schema + sanity-test harness
-- [ ] Phase 1 — data acquisition & exploration
-- [ ] Phase 2 — feature engineering
-- [ ] Phase 3 — baseline model (logreg / XGBoost)
+- [x] **Phase 1** — data acquisition & exploration (2,783 shots)
+- [x] **Phase 2** — feature engineering (9 position-only features)
+- [x] **Phase 3** — baseline model: XGBoost, test log loss 0.263 / Brier 0.071
 - [ ] Phase 4 — neural net (MLP)
 - [ ] Phase 5 — evaluation (log loss, Brier, calibration)
 - [ ] Phase 6 — FastAPI prediction endpoint

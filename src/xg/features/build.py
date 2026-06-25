@@ -111,10 +111,12 @@ def state_to_features(state: GameState) -> np.ndarray:
 
 
 def build_dataset(parquet_path: Path | None = None):
-    """Read the saved shots, keep OPEN PLAY only, and build X (DataFrame), y, groups.
+    """Read the saved shots, keep OPEN PLAY only, and build X (DataFrame), y,
+    groups, and StatsBomb's own xG (carried along so we can benchmark on the
+    identical test split).
 
-    Returns (X, y, match_ids). Penalties/free kicks/corners are excluded per the
-    open-play-only modelling decision."""
+    Returns (X, y, match_ids, statsbomb_xg). Penalties/free kicks/corners are
+    excluded per the open-play-only modelling decision."""
     path = parquet_path or (_PROCESSED / "shots.parquet")
     df = pd.read_parquet(path)
     df = df[df["shot_type"] == "Open Play"].reset_index(drop=True)
@@ -123,25 +125,30 @@ def build_dataset(parquet_path: Path | None = None):
     X = pd.DataFrame(rows, columns=FEATURE_NAMES)
     y = df["is_goal"].to_numpy()
     match_ids = df["match_id"].to_numpy()
-    return X, y, match_ids
+    statsbomb_xg = df["statsbomb_xg"].to_numpy()
+    return X, y, match_ids, statsbomb_xg
 
 
-def split_by_match(X, y, match_ids, test_frac: float = 0.2, seed: int = 42):
-    """Split so that all shots from a given match land on the same side — no
-    leakage of match-level context between train and test."""
+def test_mask_by_match(match_ids, test_frac: float = 0.2, seed: int = 42) -> np.ndarray:
+    """Boolean mask marking which rows are test, assigned whole-match-at-a-time
+    so no match-level context leaks across the split."""
     rng = np.random.default_rng(seed)
     matches = np.unique(match_ids)
     rng.shuffle(matches)
-    n_test = int(len(matches) * test_frac)
-    test_matches = set(matches[:n_test].tolist())
-    is_test = np.array([m in test_matches for m in match_ids])
+    test_matches = set(matches[: int(len(matches) * test_frac)].tolist())
+    return np.array([m in test_matches for m in match_ids])
+
+
+def split_by_match(X, y, match_ids, test_frac: float = 0.2, seed: int = 42):
+    """Convenience wrapper: split X and y by match into (Xtr, Xte, ytr, yte)."""
+    is_test = test_mask_by_match(match_ids, test_frac, seed)
     return (X[~is_test], X[is_test], y[~is_test], y[is_test])
 
 
 def main() -> None:
     from xg.scenarios import ALL
 
-    X, y, groups = build_dataset()
+    X, y, groups, _ = build_dataset()
     Xtr, Xte, ytr, yte = split_by_match(X, y, groups)
     print(f"Open-play shots: {len(X)} | features: {len(FEATURE_NAMES)}")
     print(f"Train {len(Xtr)} ({ytr.mean():.1%} goals) | "
