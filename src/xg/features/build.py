@@ -10,12 +10,10 @@ Run:  python -m xg.features.build   (prints feature shapes + a scenario check)
 
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 from xg.data.schema import (
     GameState,
@@ -117,6 +115,8 @@ def build_dataset(parquet_path: Path | None = None):
 
     Returns (X, y, match_ids, statsbomb_xg). Penalties/free kicks/corners are
     excluded per the open-play-only modelling decision."""
+    import pandas as pd  # only needed for data loading, not for serving
+
     path = parquet_path or (_PROCESSED / "shots.parquet")
     df = pd.read_parquet(path)
     df = df[df["shot_type"] == "Open Play"].reset_index(drop=True)

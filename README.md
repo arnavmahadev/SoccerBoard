@@ -1,3 +1,14 @@
+<!-- Hugging Face Spaces config (Docker SDK). Harmless on GitHub. -->
+---
+title: Soccer xG
+emoji: ⚽
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Soccer xG
 
 An expected-goals (xG) model trained on **StatsBomb 360 freeze frames** — the
@@ -31,7 +42,7 @@ model with zero rework.
 - [x] **Phase 5** — evaluation: ECE 0.027, well calibrated ([report](reports/evaluation.md))
 - [x] **Phase 6** — FastAPI `/predict` + `/health`, schema-validated requests
 - [x] **Phase 7** — draggable SVG pitch, live xG (served from the API)
-- [ ] Phase 8 — deployment (Hugging Face Spaces)
+- [x] **Phase 8** — Dockerized, deploy-ready for HF Spaces ([guide](DEPLOY.md))
 - [ ] Stretch (post-ship only) — DeepSets net over raw player sets
 
 ## Develop

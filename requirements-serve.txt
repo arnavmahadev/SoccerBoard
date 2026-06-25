@@ -1,0 +1,11 @@
+# Runtime-only dependencies for the deployed container.
+# Deliberately excludes training/EDA deps (torch, statsbombpy, matplotlib,
+# pandas, jupyter, pytest) to keep the image small. The served XGBoost model is
+# loaded from models/baseline.joblib; unpickling it needs xgboost + sklearn.
+fastapi
+uvicorn[standard]
+pydantic
+numpy
+scikit-learn
+xgboost
+joblib

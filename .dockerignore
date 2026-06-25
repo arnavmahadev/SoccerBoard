@@ -1,0 +1,12 @@
+.venv/
+.venv-serve/
+.git/
+data/
+notebooks/
+reports/
+tests/
+models/nn.pt
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
