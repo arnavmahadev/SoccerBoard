@@ -1,0 +1,23 @@
+# Grouped by phase so you only install what you need when you need it.
+# Phase 0 (now):
+pydantic
+pytest
+
+# Phase 1 — data acquisition & EDA:
+# statsbombpy
+# pandas
+# pyarrow        # parquet
+# matplotlib
+# jupyter
+
+# Phase 2-3 — features & baseline model:
+# numpy
+# scikit-learn
+# xgboost
+
+# Phase 4 — neural net:
+# torch
+
+# Phase 6 — API:
+# fastapi
+# uvicorn[standard]

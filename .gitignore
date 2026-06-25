@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Raw downloads and large artifacts are reproducible, not committed.
+data/raw/
+data/processed/
+models/*.pkl
+models/*.pt
+models/*.joblib
