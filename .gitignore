@@ -5,6 +5,10 @@ __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
 
+# Local Claude Code files — keep local, never commit.
+CLAUDE.md
+.claude/
+
 # Raw downloads and large artifacts are reproducible, not committed.
 data/raw/
 data/processed/
