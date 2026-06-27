@@ -1,148 +1,319 @@
 * { box-sizing: border-box; }
 
 :root {
-  --bg-0: #0a0d13;
-  --bg-1: #11151d;
-  --surface: #161b24;
-  --surface-2: #1d2330;
-  --border: rgba(255, 255, 255, 0.07);
-  --text: #e9edf3;
-  --muted: #8c93a1;
-  --accent: #36c275;
-  --att: #36c275;
-  --def: #e2615a;
-  --gk: #ffd166;
+  /* base UI — warm, sunny, NOT stark white */
+  --bg:           #fdf6e8;   /* warm cream, summer paper */
+  --surface:      #fffdf7;   /* cards/panels, slightly brighter cream */
+  --border:       #e8dcc4;
+  --text:         #1e2a3a;   /* deep navy ink, reads warm on cream */
+  --text-muted:   #6b7280;
+
+  /* the pitch — vivid summer turf (stays bright in both themes) */
+  --pitch:        #3aa856;   /* brighter, sunnier green than the dark version */
+  --pitch-line:   #ffffff;
+  --pitch-ink:    #1e2a3a;   /* dark ink for marker outlines/labels on the bright pitch */
+
+  /* players — colorblind-safe, tournament-bright */
+  --attacker:     #1e6fff;   /* electric sky blue */
+  --defender:     #ff6b35;   /* warm tournament orange */
+  --goalkeeper:   #ff3d7f;   /* hot pink-magenta, GK pops */
+  --ball:         #ffffff;
+
+  /* the star: live xG value */
+  --xg-accent:    #ffb800;   /* golden sun-yellow, reserved for xG only */
+
+  --radius:       14px;      /* rounder = friendlier, more playful */
+  --page-max:     1480px;    /* shared content width so the header lines up across pages */
 }
+
+/* Dark mode — keep the tournament-bright accents and vivid turf; only the warm
+   cream chrome flips to deep charcoal. --pitch*, accents, --ball, --xg-accent
+   and --pitch-ink are intentionally inherited from :root. */
+html[data-theme="dark"] {
+  --bg:           #0f141b;
+  --surface:      #171e27;
+  --border:       #2b3542;
+  --text:         #eef2f7;
+  --text-muted:   #9aa4b2;
+}
+
+html, body { height: 100%; }
 
 body {
   margin: 0;
-  padding: 40px 24px;
-  min-height: 100vh;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background:
-    radial-gradient(1100px 600px at 80% -10%, rgba(54, 194, 117, 0.10), transparent 60%),
-    linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  min-height: 100%;
+  padding: 36px clamp(16px, 4vw, 48px) 48px;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
 
-.wrap { max-width: 960px; margin: 0 auto; }
+.app { max-width: var(--page-max); margin: 0 auto; }
 
-header h1 {
-  margin: 0 0 6px;
-  font-size: 1.9rem;
-  font-weight: 700;
+/* --- Masthead ---------------------------------------------------------- */
+.masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+.masthead h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 750;
   letter-spacing: -0.02em;
 }
-header h1 .accent { color: var(--accent); }
-header p { margin: 0 0 28px; color: var(--muted); max-width: 60ch; line-height: 1.5; }
+.masthead h1 .xg {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  vertical-align: 0.18em;
+  margin-left: 2px;
+}
+.masthead p { margin: 7px 0 0; color: var(--text-muted); font-size: 0.92rem; max-width: 60ch; }
 
-main {
-  display: flex;
-  gap: 28px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+/* page nav (shared across pages) */
+.page-nav { display: flex; gap: 6px; flex: none; }
+.page-nav a {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.page-nav a:hover { color: var(--text); border-color: var(--text-muted); }
+.page-nav a.active {
+  color: var(--surface);
+  background: var(--text);
+  border-color: transparent;
+}
+
+.masthead-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.theme-toggle {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.theme-toggle:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* --- Board layout ------------------------------------------------------ */
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+  gap: 26px;
+  align-items: stretch;
 }
 
 /* --- Pitch ------------------------------------------------------------- */
 .pitch-wrap {
-  flex: 1 1 480px;
-  min-width: 320px;
-  padding: 10px;
+  position: relative;
+  padding: 14px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.7);
+  border-radius: var(--radius);
 }
 
 #pitch {
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 10px;
+  border-radius: calc(var(--radius) - 4px);
   touch-action: none;
-  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.25);
 }
 
-.stripes rect { fill: rgba(255, 255, 255, 0.045); }
-.line { stroke: rgba(255, 255, 255, 0.72); stroke-width: 0.35; }
-.goal { stroke: #fff; stroke-width: 1.2; stroke-linecap: round; }
-.spot { fill: rgba(255, 255, 255, 0.9); }
+/* Dragging must never select the SVG text/labels or surrounding page text. */
+#pitch, #board, .pitch-wrap, .tb-stage {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pitch-bg { fill: var(--pitch); }
+.stripes rect { fill: var(--pitch-line); fill-opacity: 0.06; }
+.stripes rect:nth-child(even) { fill-opacity: 0.11; }
+.line { stroke: var(--pitch-line); stroke-opacity: 0.85; stroke-width: 0.35; fill: none; }
+.goal { stroke: var(--pitch-line); stroke-width: 1.4; stroke-linecap: round; }
+.spot { fill: var(--pitch-line); }
+
+/* shot geometry */
+.cone { fill: var(--pitch-line); fill-opacity: 0.16; stroke: var(--pitch-line); stroke-opacity: 0.5; stroke-width: 0.18; }
+.sightline {
+  stroke: var(--pitch-line);
+  stroke-opacity: 0.7;
+  stroke-width: 0.28;
+  stroke-dasharray: 1.4 1.2;
+  stroke-linecap: round;
+}
 
 .marker {
   cursor: grab;
-  stroke: #0c1016;
+  stroke: var(--pitch-ink);
   stroke-width: 0.3;
-  filter: drop-shadow(0 0.6px 0.8px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 0.6px 0.9px color-mix(in srgb, var(--pitch-ink) 35%, transparent));
   transition: r 0.08s ease;
 }
-.marker:hover { stroke-width: 0.5; }
+.marker:hover { stroke-width: 0.55; }
 .marker.dragging { cursor: grabbing; }
-.marker.shooter { fill: #14181f; stroke: var(--gk); stroke-width: 0.7; }
-.marker.att { fill: var(--att); }
-.marker.def { fill: var(--def); }
-.marker.gk  { fill: var(--gk); }
+.marker.shooter { fill: var(--ball); stroke: var(--pitch-ink); stroke-width: 0.6; }
+.marker.att { fill: var(--attacker); }
+.marker.def { fill: var(--defender); }
+.marker.gk  { fill: var(--goalkeeper); }
+.marker.in-cone { stroke: var(--pitch-ink); stroke-width: 0.85; }
 .marker-label {
-  fill: #0c1016; font-size: 2px; font-weight: 800;
+  fill: var(--pitch-ink); font-size: 2px; font-weight: 800;
   text-anchor: middle; dominant-baseline: central; pointer-events: none;
 }
 
 /* --- Panel ------------------------------------------------------------- */
 #panel {
-  flex: 0 1 260px;
-  min-width: 230px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
+/* The xG hero uses the same surface + border as the stat cards; the golden
+   value is what makes it stand out, not the panel color. */
 .xg-box {
-  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  position: relative;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px 20px 20px;
+  border-radius: var(--radius);
+  padding: 24px 20px 20px;
   text-align: center;
 }
-.xg-label { color: var(--muted); letter-spacing: 0.18em; font-size: 0.7rem; font-weight: 600; }
+.xg-label { color: var(--text-muted); letter-spacing: 0.2em; font-size: 0.68rem; font-weight: 700; }
 #xg-value {
-  font-size: 3.6rem; font-weight: 800; line-height: 1.05;
-  font-variant-numeric: tabular-nums; margin-top: 4px;
+  color: var(--xg-accent);
+  font-size: 3.8rem; font-weight: 800; line-height: 1.02;
+  font-variant-numeric: tabular-nums; margin-top: 2px;
+  letter-spacing: -0.03em;
 }
-.xg-pct { color: var(--muted); font-size: 0.85rem; min-height: 1.1em; }
+.xg-verdict {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 3px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+  min-height: 1.2em;
+}
 .bar {
-  height: 10px; background: rgba(255, 255, 255, 0.08);
+  height: 10px; background: color-mix(in srgb, var(--text) 12%, transparent);
   border-radius: 6px; overflow: hidden; margin-top: 16px;
 }
 #xg-bar {
   height: 100%; width: 0%;
-  background: var(--accent);
+  background: var(--pitch);
   border-radius: 6px;
-  transition: width 0.25s ease, background 0.25s ease;
+  transition: width 0.3s cubic-bezier(.4,0,.2,1);
+}
+.xg-pct { color: var(--text-muted); font-size: 0.82rem; min-height: 1.1em; margin-top: 9px; }
+
+/* --- Stat grid --------------------------------------------------------- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;      /* equal rows that grow to absorb the panel's height */
+  gap: 12px;
+  flex: 1 1 auto;           /* fill the space between the hero and the buttons */
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;  /* keep the value centered as the card grows */
+  align-items: center;      /* center the text horizontally too */
+  text-align: center;
+  gap: 4px;
+  min-height: 76px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+}
+.stat-val {
+  font-size: 1.32rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.stat-val .unit { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+.stat-val.warn { color: var(--defender); }
+.stat-key {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .legend {
-  display: flex; flex-direction: column; gap: 9px;
-  margin: 20px 4px; font-size: 0.88rem; color: #c7ccd6;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.82rem;
+  color: var(--text);
 }
+.legend span { display: flex; align-items: center; }
 .dot {
-  display: inline-block; width: 12px; height: 12px; border-radius: 50%;
-  margin-right: 8px; vertical-align: middle;
+  display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  margin-right: 9px; flex: none;
 }
-.dot.shooter { background: #14181f; border: 2px solid var(--gk); }
-.dot.att { background: var(--att); }
-.dot.def { background: var(--def); }
-.dot.gk  { background: var(--gk); }
+.dot.shooter { background: var(--ball); border: 2px solid var(--text); }
+.dot.att { background: var(--attacker); }
+.dot.def { background: var(--defender); }
+.dot.gk  { background: var(--goalkeeper); }
 
-.controls { display: flex; gap: 8px; flex-wrap: wrap; }
-button {
+.controls { display: flex; gap: 9px; flex-wrap: wrap; }
+.controls button {
   flex: 1 1 auto;
-  background: var(--surface-2); color: var(--text);
-  border: 1px solid var(--border); padding: 9px 12px;
-  border-radius: 9px; cursor: pointer; font-size: 0.85rem; font-weight: 500;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); padding: 11px 12px;
+  border-radius: calc(var(--radius) - 3px); cursor: pointer; font-size: 0.85rem; font-weight: 700;
   transition: background 0.15s ease, transform 0.05s ease, border-color 0.15s ease;
 }
-button:hover { background: #28303f; border-color: rgba(255, 255, 255, 0.14); }
-button:active { transform: translateY(1px); }
-button.ghost { flex: 0 0 auto; background: transparent; color: var(--muted); }
-button.ghost:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+.controls button:active { transform: translateY(1px); }
 
-.status { color: var(--muted); font-size: 0.78rem; min-height: 1.1em; margin: 14px 0 0; }
+/* The add buttons carry the color of the player they drop, so it's obvious
+   what each does. Reset is a distinct neutral button of its own. */
+.controls .btn-att {
+  color: var(--attacker);
+  border-color: color-mix(in srgb, var(--attacker) 55%, transparent);
+  background: color-mix(in srgb, var(--attacker) 12%, var(--surface));
+}
+.controls .btn-att:hover { background: color-mix(in srgb, var(--attacker) 22%, var(--surface)); }
+.controls .btn-def {
+  color: var(--defender);
+  border-color: color-mix(in srgb, var(--defender) 55%, transparent);
+  background: color-mix(in srgb, var(--defender) 12%, var(--surface));
+}
+.controls .btn-def:hover { background: color-mix(in srgb, var(--defender) 22%, var(--surface)); }
+.controls #reset { flex: 0 0 auto; color: var(--text-muted); }
+.controls #reset:hover { color: var(--text); background: var(--bg); border-color: var(--text-muted); }
+
+/* --- Responsive -------------------------------------------------------- */
+@media (max-width: 860px) {
+  .board { grid-template-columns: 1fr; }
+}
