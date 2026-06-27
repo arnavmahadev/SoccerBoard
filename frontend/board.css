@@ -1,0 +1,155 @@
+/* Tactics whiteboard — layered on top of style.css (shared theme tokens). */
+
+/* The board fills the page: a flex column of header → toolbar → field. It shares
+   the xG page's content width so the header lines up when switching pages. */
+.board-app {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: calc(100dvh - 84px); /* body has 36px top + 48px bottom padding */
+}
+
+.tb-head {
+  padding-bottom: 16px;
+  margin-bottom: 0;
+}
+.tb-head p { margin-top: 4px; }
+
+/* --- Toolbar ----------------------------------------------------------- */
+/* Groups of pill buttons that match the page nav / theme toggle, separated by
+   thin dividers rather than boxed-in segments. */
+.tb-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+.tb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tb-group + .tb-group { border-left: 1px solid var(--border); padding-left: 14px; }
+.tb-actions { margin-left: auto; border-left: none; padding-left: 0; }
+
+/* Shared pill styling: same language as .page-nav a and .theme-toggle. */
+.tb-toolbar button,
+.tb-pick select {
+  flex: 0 0 auto;
+  padding: 8px 13px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.tb-toolbar button:hover,
+.tb-pick select:hover { color: var(--text); border-color: var(--text-muted); }
+.tb-tool.active,
+.tb-fmt.active {
+  color: var(--surface);
+  background: var(--text);
+  border-color: transparent;
+}
+
+/* Per-team formation pickers. */
+.tb-formations { gap: 8px; }
+.tb-pick { display: flex; align-items: center; gap: 6px; }
+.tb-pick select { padding: 8px 10px; }
+.tb-pick-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.tb-pick-dot.home { background: var(--attacker); }
+.tb-pick-dot.away { background: var(--defender); }
+
+.tb-toolbar .swatch {
+  width: 24px; height: 24px;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 7px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+}
+.tb-toolbar .swatch.active { border-color: var(--text); box-shadow: 0 0 0 2px color-mix(in srgb, var(--text) 25%, transparent); }
+
+/* Sliding on/off switch for shirt numbers. */
+.tb-switch { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); user-select: none; }
+.tb-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.tb-switch-track {
+  position: relative;
+  width: 38px; height: 22px;
+  flex: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 45%, var(--surface));
+  transition: background 0.15s ease;
+}
+.tb-switch-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease;
+}
+.tb-switch input:checked + .tb-switch-track { background: var(--attacker); }
+.tb-switch input:checked + .tb-switch-track .tb-switch-knob { transform: translateX(16px); }
+.tb-switch input:focus-visible + .tb-switch-track { box-shadow: 0 0 0 2px color-mix(in srgb, var(--text) 30%, transparent); }
+
+/* --- Field (fills remaining height) ------------------------------------ */
+.tb-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+#board {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: block;
+  touch-action: none;
+}
+#board[data-tool="pen"], #board[data-tool="pass"], #board[data-tool="run"] { cursor: crosshair; }
+#board[data-tool="erase"] { cursor: not-allowed; }
+
+/* --- Pitch markings ---------------------------------------------------- */
+.turf-bg { fill: var(--pitch); }
+.mow-light { fill: #ffffff; fill-opacity: 0.06; }
+.mow-dark { fill: #000000; fill-opacity: 0.05; }
+.lines { stroke: var(--pitch-line); stroke-opacity: 0.85; stroke-width: 0.4; }
+.lines .goal { stroke: var(--pitch-line); stroke-width: 1; stroke-linecap: round; }
+.lines .spot { fill: var(--pitch-line); stroke: none; }
+
+/* --- Strokes ----------------------------------------------------------- */
+.stroke { fill: none; stroke-width: 0.7; stroke-linecap: round; stroke-linejoin: round; }
+.stroke.arrow { stroke-width: 0.6; stroke-linecap: butt; } /* butt so the stem can't poke past the arrowhead tip */
+.stroke.arrow.dashed { stroke-dasharray: 2 1.6; }
+[data-tool="erase"] .stroke,
+[data-tool="erase"] .token { cursor: not-allowed; }
+
+/* --- Tokens ------------------------------------------------------------ */
+.token { stroke: var(--text); stroke-width: 0.35; filter: drop-shadow(0 0.5px 0.8px color-mix(in srgb, var(--text) 30%, transparent)); }
+[data-tool="move"] .token { cursor: grab; }
+.token.home { fill: var(--attacker); }
+.token.away { fill: var(--defender); }
+/* The ball is always white with black detailing — never re-tinted by the theme. */
+.token.ball { fill: var(--ball); stroke: var(--pitch-ink); stroke-width: 0.3; }
+.ball-pip { fill: var(--pitch-ink); pointer-events: none; }
+.token-label {
+  fill: #fff; font-size: 2.6px; font-weight: 800;
+  text-anchor: middle; dominant-baseline: central; pointer-events: none;
+  font-family: "Inter", system-ui, sans-serif;
+}
+#board[data-numbers="off"] .token-label { display: none; }
+
+/* --- Responsive -------------------------------------------------------- */
+@media (max-width: 760px) {
+  .board-app { height: auto; }
+  .tb-stage { min-height: 60vh; }
+  .tb-actions { margin-left: 0; }
+}

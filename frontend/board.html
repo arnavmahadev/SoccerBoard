@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoccerBoard</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="board.css" />
+  <script src="theme.js"></script>
+</head>
+<body class="board-body">
+  <div class="app board-app">
+    <header class="masthead tb-head">
+      <div>
+        <h1>Tactics Board</h1>
+        <p>Drag players, draw runs and passes, and talk through plays.</p>
+      </div>
+      <div class="masthead-actions">
+        <nav class="page-nav">
+          <a href="index.html">Expected Goals</a>
+          <a href="board.html" class="active" aria-current="page">Tactics Board</a>
+        </nav>
+        <button id="theme-toggle" class="theme-toggle" type="button">☾ Dark</button>
+      </div>
+    </header>
+
+    <div class="tb-toolbar">
+      <div class="tb-group" id="tools" role="group" aria-label="Tools">
+        <button class="tb-tool active" data-tool="move"  title="Move / drag pieces">↖ Move</button>
+        <button class="tb-tool" data-tool="pen"   title="Freehand draw">✎ Draw</button>
+        <button class="tb-tool" data-tool="pass"  title="Pass (solid arrow)">→ Pass</button>
+        <button class="tb-tool" data-tool="run"   title="Run (dashed arrow)">⇢ Run</button>
+        <button class="tb-tool" data-tool="erase" title="Tap a piece or line to delete">⌫ Erase</button>
+      </div>
+
+      <div class="tb-group" id="colors" role="group" aria-label="Pen color"></div>
+
+      <div class="tb-group" id="formats" role="group" aria-label="Players per side">
+        <button class="tb-fmt active" data-format="11">11v11</button>
+        <button class="tb-fmt" data-format="9">9v9</button>
+        <button class="tb-fmt" data-format="7">7v7</button>
+      </div>
+
+      <div class="tb-group tb-formations">
+        <label class="tb-pick" title="Home formation">
+          <span class="tb-pick-dot home"></span>
+          <select id="home-formation" aria-label="Home formation"></select>
+        </label>
+        <label class="tb-pick" title="Away formation">
+          <span class="tb-pick-dot away"></span>
+          <select id="away-formation" aria-label="Away formation"></select>
+        </label>
+      </div>
+
+      <div class="tb-group" id="view" role="group" aria-label="View">
+        <label class="tb-switch" title="Show or hide jersey numbers">
+          <span class="tb-switch-text">Jersey Numbers</span>
+          <input type="checkbox" id="toggle-numbers" checked />
+          <span class="tb-switch-track"><span class="tb-switch-knob"></span></span>
+        </label>
+      </div>
+
+      <div class="tb-group tb-actions">
+        <button id="undo" title="Undo last change">↩ Undo</button>
+        <button id="clear-draw" title="Remove all drawn lines">Clear lines</button>
+        <button id="reset" title="Reset players to formation">Reset</button>
+      </div>
+    </div>
+
+    <main class="tb-stage">
+      <!-- viewBox is the pitch with a margin all round; user units == pitch units
+           (120 x 80), so token positions read naturally. -->
+      <svg id="board" viewBox="-6 -6 132 92" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <pattern id="mow" width="20" height="80" patternUnits="userSpaceOnUse">
+            <rect x="0"  width="10" height="80" class="mow-light" />
+            <rect x="10" width="10" height="80" class="mow-dark" />
+          </pattern>
+        </defs>
+
+        <!-- turf -->
+        <rect x="-6" y="-6" width="132" height="92" rx="3" class="turf-bg" />
+        <rect x="0" y="0" width="120" height="80" fill="url(#mow)" />
+
+        <!-- markings -->
+        <g class="lines" fill="none">
+          <rect x="0" y="0" width="120" height="80" />
+          <line x1="60" y1="0" x2="60" y2="80" />
+          <circle cx="60" cy="40" r="10" />
+          <circle class="spot" cx="60" cy="40" r="0.6" />
+          <!-- left -->
+          <rect x="0" y="18" width="18" height="44" />
+          <rect x="0" y="30" width="6"  height="20" />
+          <circle class="spot" cx="12" cy="40" r="0.6" />
+          <path d="M 18 32 A 10 10 0 0 1 18 48" />
+          <line x1="0" y1="36" x2="0" y2="44" class="goal" />
+          <!-- right -->
+          <rect x="102" y="18" width="18" height="44" />
+          <rect x="114" y="30" width="6"  height="20" />
+          <circle class="spot" cx="108" cy="40" r="0.6" />
+          <path d="M 102 32 A 10 10 0 0 0 102 48" />
+          <line x1="120" y1="36" x2="120" y2="44" class="goal" />
+          <!-- corner arcs -->
+          <path d="M 1.4 0 A 1.4 1.4 0 0 1 0 1.4" />
+          <path d="M 0 78.6 A 1.4 1.4 0 0 1 1.4 80" />
+          <path d="M 118.6 80 A 1.4 1.4 0 0 1 120 78.6" />
+          <path d="M 120 1.4 A 1.4 1.4 0 0 1 118.6 0" />
+        </g>
+
+        <g id="strokes"></g>
+        <g id="tokens"></g>
+        <g id="live"></g>
+      </svg>
+    </main>
+  </div>
+
+  <script src="board.js"></script>
+</body>
+</html>
