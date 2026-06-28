@@ -1,0 +1,146 @@
+/* Vision page — photo/video -> 2D pitch. Builds on style.css tokens. */
+
+.vz-steps {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.vz-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--attacker) 55%, transparent);
+  background: color-mix(in srgb, var(--attacker) 12%, var(--surface));
+  color: var(--attacker);
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.vz-upload:hover { background: color-mix(in srgb, var(--attacker) 22%, var(--surface)); }
+.vz-upload-icon { font-size: 1rem; }
+
+.vz-cal-status { display: flex; align-items: center; gap: 9px; color: var(--text-muted); font-size: 0.86rem; }
+.vz-cal-status em { font-style: normal; opacity: 0.75; }
+.vz-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 26px; height: 26px; padding: 0 7px;
+  border-radius: 8px; font-weight: 800; font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text);
+}
+.vz-badge.ready { background: var(--pitch); color: #fff; }
+
+.vz-actions { display: flex; gap: 9px; margin-left: auto; }
+.vz-btn {
+  padding: 10px 16px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px;
+  font-weight: 700; font-size: 0.85rem; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+.vz-btn:hover:not(:disabled) { border-color: var(--text-muted); }
+.vz-btn:active:not(:disabled) { transform: translateY(1px); }
+.vz-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.vz-btn-primary {
+  color: #fff; background: var(--xg-accent); border-color: transparent;
+  color: #3a2c00;
+}
+.vz-btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+
+.vz-hint {
+  margin: 0 0 18px; color: var(--text-muted); font-size: 0.86rem;
+  min-height: 1.2em;
+}
+.vz-hint.err { color: var(--defender); font-weight: 600; }
+.vz-hint.busy { color: var(--attacker); font-weight: 600; }
+
+/* --- layout ------------------------------------------------------------ */
+.vz-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) { .vz-grid { grid-template-columns: 1fr; } }
+
+.vz-source, .vz-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.vz-source { padding: 14px; }
+.vz-source-head, .vz-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-weight: 700; font-size: 0.82rem; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text); margin-bottom: 10px;
+}
+.vz-source-sub { color: var(--text-muted); font-weight: 600; text-transform: none; letter-spacing: 0; }
+
+.vz-media-frame {
+  position: relative;
+  width: 100%;
+  border-radius: calc(var(--radius) - 4px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  min-height: 220px;
+  display: flex; align-items: center; justify-content: center;
+}
+.vz-drop { color: var(--text-muted); font-size: 0.9rem; padding: 40px 20px; text-align: center; }
+#media-img, #media-video { width: 100%; height: auto; display: block; }
+#cal-overlay {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  cursor: crosshair; touch-action: none;
+}
+.vz-media-frame.armed #cal-overlay { cursor: crosshair; }
+
+/* calibration markers drawn on the source */
+.cal-pin { fill: var(--xg-accent); stroke: #3a2c00; stroke-width: 2; }
+.cal-pin-label { fill: #3a2c00; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+
+/* --- scrubber ---------------------------------------------------------- */
+.vz-scrub { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.vz-scrub input[type="range"] { flex: 1; accent-color: var(--xg-accent); cursor: pointer; }
+.vz-time { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 0.82rem; min-width: 56px; text-align: right; }
+#play-toggle { padding: 8px 12px; }
+
+/* --- panel cards ------------------------------------------------------- */
+.vz-panel { display: flex; flex-direction: column; gap: 18px; }
+.vz-card { padding: 16px; }
+.vz-card-sub { margin: -4px 0 12px; color: var(--text-muted); font-size: 0.8rem; }
+#ref-pitch, #pitch { width: 100%; height: auto; display: block; }
+.vz-counts { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text-muted); font-size: 0.78rem; }
+
+/* reference pitch styling reuses pitch-line look */
+#ref-pitch .rp-turf { fill: var(--pitch); }
+#ref-pitch .rp-line { stroke: var(--pitch-line); stroke-opacity: 0.8; stroke-width: 0.4; fill: none; }
+.rp-mark {
+  fill: color-mix(in srgb, var(--xg-accent) 30%, transparent);
+  stroke: var(--xg-accent); stroke-width: 0.5; cursor: pointer;
+  transition: fill 0.12s ease, r 0.12s ease;
+}
+.rp-mark:hover { fill: var(--xg-accent); }
+.rp-mark.used { fill: var(--pitch); stroke: #fff; }
+.rp-mark.armed { fill: var(--xg-accent); stroke: #3a2c00; stroke-width: 0.9; r: 2.4; }
+
+/* 2D pitch dots */
+.vz-pitch-card #pitch { margin-top: 4px; }
+.pz-turf { fill: var(--pitch); }
+.pz-line { stroke: var(--pitch-line); stroke-opacity: 0.85; stroke-width: 0.35; fill: none; }
+.pz-spot { fill: var(--pitch-line); }
+.pz-dot { stroke: var(--pitch-ink); stroke-width: 0.3; filter: drop-shadow(0 0.5px 0.8px rgba(0,0,0,0.35)); }
+.pz-dot.team0 { fill: var(--attacker); }
+.pz-dot.team1 { fill: var(--defender); }
+.pz-dot.teamnull { fill: #9aa4b2; }
+.pz-ball { fill: var(--ball); stroke: var(--pitch-ink); stroke-width: 0.6; }
+
+.vz-legend { margin-top: 12px; grid-template-columns: 1fr 1fr; }
+.dot.unknown { background: #9aa4b2; }
