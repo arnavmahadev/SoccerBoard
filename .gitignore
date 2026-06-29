@@ -15,6 +15,5 @@ data/processed/
 models/*.pkl
 models/*.pt
 models/*.joblib
-models/weights/
 # ...except the served model, committed so deploys are fast and offline.
 !models/baseline.joblib

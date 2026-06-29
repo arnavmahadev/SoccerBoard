@@ -50,39 +50,9 @@ class PredictResponse(BaseModel):
     shot_type: str
 
 
-# Photo/video -> pitch routes. The vision extras (opencv / ultralytics / torch)
-# are heavy and optional, so include them only if importable; otherwise the app
-# still serves xG + the UI and a stub /vision/health reports the feature off.
-try:
-    from xg.vision.api import router as vision_router
-    from xg.vision.worker import warm as vision_warm
-
-    app.include_router(vision_router)
-    VISION_AVAILABLE = True
-
-    @app.on_event("startup")
-    def _warm_vision() -> None:
-        # Spawn + warm the inference worker process now so the first request
-        # doesn't pay the model-load cost. Best-effort; failure just defers it.
-        try:
-            vision_warm()
-        except Exception:  # noqa: BLE001
-            pass
-
-except Exception:  # noqa: BLE001 — any import failure means the feature is off
-    VISION_AVAILABLE = False
-
-    @app.get("/vision/health")
-    def vision_unavailable() -> dict:
-        return {
-            "available": False,
-            "reason": "vision extras not installed (pip install -r requirements-vision.txt)",
-        }
-
-
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "vision": VISION_AVAILABLE, **model_info()}
+    return {"status": "ok", **model_info()}
 
 
 @app.post("/predict", response_model=PredictResponse)

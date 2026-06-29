@@ -1,7 +1,0 @@
-# Optional extras for the Vision page (photo/video -> 2D pitch).
-# Heavy (torch is ~hundreds of MB) and CPU-slow, so kept out of the lean serving
-# image. Install separately to enable /vision routes:
-#     pip install -r requirements-vision.txt
-ultralytics            # YOLOv8 person/ball detector (pulls torch + torchvision)
-opencv-python-headless # homography + video frame decoding, no GUI libs
-python-multipart       # FastAPI multipart upload parsing for /vision routes
