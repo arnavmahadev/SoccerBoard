@@ -1,0 +1,90 @@
+"""Build every committed forecaster artifact, so the deployed app starts fast and
+offline (mirroring the committed xG model).
+
+Produces under forecaster/artifacts/:
+  - world_cup_2026.json   competition config (groups, fixtures, knockout bracket)
+  - params.json           frozen pre-tournament Dixon-Coles fit
+  - group_forecast.json   pre-tournament P(win group)/P(advance) per team
+  - metrics.json          backtest log-loss / Brier / calibration / baseline
+  - results_snapshot.csv  trimmed offline fallback for the match-results feed
+
+The live knockout simulation is intentionally NOT committed — it's recomputed
+from the latest results on each request (the live behaviour). A committed
+snapshot would just go stale.
+
+Run:  python -m forecaster.build_artifacts
+"""
+
+from __future__ import annotations
+
+import csv
+import json
+
+from forecaster import build_wc2026, dixon_coles as dc, evaluate
+from forecaster.data import (
+    ARTIFACTS,
+    SNAPSHOT_SINCE,
+    WC2026_KICKOFF,
+    fetch_results,
+    get_competition,
+    load_matches,
+)
+from forecaster.formats.base import MatchSampler
+from forecaster.formats.world_cup import WorldCupFormat
+
+FIT_SINCE = "2010-01-01"   # history window for the production fit (time-decayed)
+XI = 0.35
+REG = 0.02
+N_SIMS = 20000             # group forecast is committed, so simulate generously
+
+
+def main() -> None:
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    print("Fetching latest results feed...")
+    src = fetch_results(force=True)
+
+    print("Building competition config (world_cup_2026)...")
+    cfg = build_wc2026.build_config()
+    (ARTIFACTS / "world_cup_2026.json").write_text(
+        json.dumps(cfg, indent=2, ensure_ascii=False)
+    )
+
+    print(f"Fitting Dixon-Coles (pre-tournament, since {FIT_SINCE})...")
+    train = load_matches(as_of=WC2026_KICKOFF, since=FIT_SINCE)
+    train = [m for m in train if m.date < WC2026_KICKOFF]
+    params = dc.fit(train, xi=XI, reg=REG, ref_date=WC2026_KICKOFF)
+    params.to_json(ARTIFACTS / "params.json")
+    print(f"  {len(params.teams)} teams, {params.n_matches} matches, "
+          f"home_adv={params.home_adv:.3f}, rho={params.rho:.3f}")
+
+    print(f"Group-stage forecast ({N_SIMS} sims)...")
+    sampler = MatchSampler(params)
+    fmt = WorldCupFormat(cfg)
+    forecast = fmt.group_forecast(sampler, n=N_SIMS, seed=7)
+    (ARTIFACTS / "group_forecast.json").write_text(
+        json.dumps({cfg["id"]: forecast}, indent=2, ensure_ascii=False)
+    )
+
+    print("Backtest + calibration...")
+    report = evaluate.backtest(xi=XI, reg=REG)
+    (ARTIFACTS / "metrics.json").write_text(json.dumps(report, indent=2))
+    evaluate._print_summary(report)
+
+    print(f"\nWriting trimmed results snapshot (since {SNAPSHOT_SINCE})...")
+    with open(src, newline="", encoding="utf-8") as f, \
+            open(ARTIFACTS / "results_snapshot.csv", "w", newline="", encoding="utf-8") as out:
+        reader = csv.reader(f)
+        writer = csv.writer(out)
+        header = next(reader)
+        writer.writerow(header)
+        kept = 0
+        for row in reader:
+            if row and row[0] >= SNAPSHOT_SINCE:
+                writer.writerow(row)
+                kept += 1
+    print(f"  snapshot rows: {kept}")
+    print("\nDone. Artifacts written to", ARTIFACTS)
+
+
+if __name__ == "__main__":
+    main()

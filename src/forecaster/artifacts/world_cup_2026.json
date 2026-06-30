@@ -1,0 +1,683 @@
+{
+  "kind": "competition",
+  "id": "world_cup_2026",
+  "name": "FIFA World Cup 2026",
+  "format": "world_cup",
+  "hosts": [
+    "United States",
+    "Canada",
+    "Mexico"
+  ],
+  "kickoff": "2026-06-11",
+  "group_stage_end": "2026-06-27",
+  "tournament_label": "FIFA World Cup",
+  "season_year": "2026",
+  "advance_per_group": 2,
+  "best_thirds": 8,
+  "groups": {
+    "A": [
+      "Algeria",
+      "Argentina",
+      "Austria",
+      "Jordan"
+    ],
+    "B": [
+      "Australia",
+      "Paraguay",
+      "Turkey",
+      "United States"
+    ],
+    "C": [
+      "Belgium",
+      "Egypt",
+      "Iran",
+      "New Zealand"
+    ],
+    "D": [
+      "Bosnia and Herzegovina",
+      "Canada",
+      "Qatar",
+      "Switzerland"
+    ],
+    "E": [
+      "Brazil",
+      "Haiti",
+      "Morocco",
+      "Scotland"
+    ],
+    "F": [
+      "Cape Verde",
+      "Saudi Arabia",
+      "Spain",
+      "Uruguay"
+    ],
+    "G": [
+      "Colombia",
+      "DR Congo",
+      "Portugal",
+      "Uzbekistan"
+    ],
+    "H": [
+      "Croatia",
+      "England",
+      "Ghana",
+      "Panama"
+    ],
+    "I": [
+      "Curaçao",
+      "Ecuador",
+      "Germany",
+      "Ivory Coast"
+    ],
+    "J": [
+      "Czech Republic",
+      "Mexico",
+      "South Africa",
+      "South Korea"
+    ],
+    "K": [
+      "France",
+      "Iraq",
+      "Norway",
+      "Senegal"
+    ],
+    "L": [
+      "Japan",
+      "Netherlands",
+      "Sweden",
+      "Tunisia"
+    ]
+  },
+  "group_fixtures": [
+    {
+      "home": "Mexico",
+      "away": "South Africa",
+      "neutral": false
+    },
+    {
+      "home": "South Korea",
+      "away": "Czech Republic",
+      "neutral": true
+    },
+    {
+      "home": "Canada",
+      "away": "Bosnia and Herzegovina",
+      "neutral": false
+    },
+    {
+      "home": "United States",
+      "away": "Paraguay",
+      "neutral": false
+    },
+    {
+      "home": "Australia",
+      "away": "Turkey",
+      "neutral": true
+    },
+    {
+      "home": "Brazil",
+      "away": "Morocco",
+      "neutral": true
+    },
+    {
+      "home": "Haiti",
+      "away": "Scotland",
+      "neutral": true
+    },
+    {
+      "home": "Qatar",
+      "away": "Switzerland",
+      "neutral": true
+    },
+    {
+      "home": "Germany",
+      "away": "Curaçao",
+      "neutral": true
+    },
+    {
+      "home": "Ivory Coast",
+      "away": "Ecuador",
+      "neutral": true
+    },
+    {
+      "home": "Netherlands",
+      "away": "Japan",
+      "neutral": true
+    },
+    {
+      "home": "Sweden",
+      "away": "Tunisia",
+      "neutral": true
+    },
+    {
+      "home": "Belgium",
+      "away": "Egypt",
+      "neutral": true
+    },
+    {
+      "home": "Iran",
+      "away": "New Zealand",
+      "neutral": true
+    },
+    {
+      "home": "Saudi Arabia",
+      "away": "Uruguay",
+      "neutral": true
+    },
+    {
+      "home": "Spain",
+      "away": "Cape Verde",
+      "neutral": true
+    },
+    {
+      "home": "Argentina",
+      "away": "Algeria",
+      "neutral": true
+    },
+    {
+      "home": "Austria",
+      "away": "Jordan",
+      "neutral": true
+    },
+    {
+      "home": "France",
+      "away": "Senegal",
+      "neutral": true
+    },
+    {
+      "home": "Iraq",
+      "away": "Norway",
+      "neutral": true
+    },
+    {
+      "home": "England",
+      "away": "Croatia",
+      "neutral": true
+    },
+    {
+      "home": "Ghana",
+      "away": "Panama",
+      "neutral": true
+    },
+    {
+      "home": "Portugal",
+      "away": "DR Congo",
+      "neutral": true
+    },
+    {
+      "home": "Uzbekistan",
+      "away": "Colombia",
+      "neutral": true
+    },
+    {
+      "home": "Canada",
+      "away": "Qatar",
+      "neutral": false
+    },
+    {
+      "home": "Czech Republic",
+      "away": "South Africa",
+      "neutral": true
+    },
+    {
+      "home": "Mexico",
+      "away": "South Korea",
+      "neutral": false
+    },
+    {
+      "home": "Switzerland",
+      "away": "Bosnia and Herzegovina",
+      "neutral": true
+    },
+    {
+      "home": "Brazil",
+      "away": "Haiti",
+      "neutral": true
+    },
+    {
+      "home": "Scotland",
+      "away": "Morocco",
+      "neutral": true
+    },
+    {
+      "home": "Turkey",
+      "away": "Paraguay",
+      "neutral": true
+    },
+    {
+      "home": "United States",
+      "away": "Australia",
+      "neutral": false
+    },
+    {
+      "home": "Ecuador",
+      "away": "Curaçao",
+      "neutral": true
+    },
+    {
+      "home": "Germany",
+      "away": "Ivory Coast",
+      "neutral": true
+    },
+    {
+      "home": "Netherlands",
+      "away": "Sweden",
+      "neutral": true
+    },
+    {
+      "home": "Tunisia",
+      "away": "Japan",
+      "neutral": true
+    },
+    {
+      "home": "Belgium",
+      "away": "Iran",
+      "neutral": true
+    },
+    {
+      "home": "New Zealand",
+      "away": "Egypt",
+      "neutral": true
+    },
+    {
+      "home": "Spain",
+      "away": "Saudi Arabia",
+      "neutral": true
+    },
+    {
+      "home": "Uruguay",
+      "away": "Cape Verde",
+      "neutral": true
+    },
+    {
+      "home": "Argentina",
+      "away": "Austria",
+      "neutral": true
+    },
+    {
+      "home": "France",
+      "away": "Iraq",
+      "neutral": true
+    },
+    {
+      "home": "Jordan",
+      "away": "Algeria",
+      "neutral": true
+    },
+    {
+      "home": "Norway",
+      "away": "Senegal",
+      "neutral": true
+    },
+    {
+      "home": "Colombia",
+      "away": "DR Congo",
+      "neutral": true
+    },
+    {
+      "home": "England",
+      "away": "Ghana",
+      "neutral": true
+    },
+    {
+      "home": "Panama",
+      "away": "Croatia",
+      "neutral": true
+    },
+    {
+      "home": "Portugal",
+      "away": "Uzbekistan",
+      "neutral": true
+    },
+    {
+      "home": "Bosnia and Herzegovina",
+      "away": "Qatar",
+      "neutral": true
+    },
+    {
+      "home": "Canada",
+      "away": "Switzerland",
+      "neutral": false
+    },
+    {
+      "home": "Mexico",
+      "away": "Czech Republic",
+      "neutral": false
+    },
+    {
+      "home": "Morocco",
+      "away": "Haiti",
+      "neutral": true
+    },
+    {
+      "home": "Scotland",
+      "away": "Brazil",
+      "neutral": true
+    },
+    {
+      "home": "South Africa",
+      "away": "South Korea",
+      "neutral": true
+    },
+    {
+      "home": "Curaçao",
+      "away": "Ivory Coast",
+      "neutral": true
+    },
+    {
+      "home": "Ecuador",
+      "away": "Germany",
+      "neutral": true
+    },
+    {
+      "home": "Japan",
+      "away": "Sweden",
+      "neutral": true
+    },
+    {
+      "home": "Paraguay",
+      "away": "Australia",
+      "neutral": true
+    },
+    {
+      "home": "Tunisia",
+      "away": "Netherlands",
+      "neutral": true
+    },
+    {
+      "home": "United States",
+      "away": "Turkey",
+      "neutral": false
+    },
+    {
+      "home": "Cape Verde",
+      "away": "Saudi Arabia",
+      "neutral": true
+    },
+    {
+      "home": "Egypt",
+      "away": "Iran",
+      "neutral": true
+    },
+    {
+      "home": "New Zealand",
+      "away": "Belgium",
+      "neutral": true
+    },
+    {
+      "home": "Norway",
+      "away": "France",
+      "neutral": true
+    },
+    {
+      "home": "Senegal",
+      "away": "Iraq",
+      "neutral": true
+    },
+    {
+      "home": "Uruguay",
+      "away": "Spain",
+      "neutral": true
+    },
+    {
+      "home": "Algeria",
+      "away": "Austria",
+      "neutral": true
+    },
+    {
+      "home": "Colombia",
+      "away": "Portugal",
+      "neutral": true
+    },
+    {
+      "home": "Croatia",
+      "away": "Ghana",
+      "neutral": true
+    },
+    {
+      "home": "DR Congo",
+      "away": "Uzbekistan",
+      "neutral": true
+    },
+    {
+      "home": "Jordan",
+      "away": "Argentina",
+      "neutral": true
+    },
+    {
+      "home": "Panama",
+      "away": "England",
+      "neutral": true
+    }
+  ],
+  "knockout": {
+    "round_of_32": [
+      {
+        "match": 73,
+        "teams": [
+          "South Africa",
+          "Canada"
+        ]
+      },
+      {
+        "match": 74,
+        "teams": [
+          "Germany",
+          "Paraguay"
+        ]
+      },
+      {
+        "match": 75,
+        "teams": [
+          "Netherlands",
+          "Morocco"
+        ]
+      },
+      {
+        "match": 76,
+        "teams": [
+          "Ivory Coast",
+          "Norway"
+        ]
+      },
+      {
+        "match": 77,
+        "teams": [
+          "France",
+          "Sweden"
+        ]
+      },
+      {
+        "match": 78,
+        "teams": [
+          "Mexico",
+          "Ecuador"
+        ]
+      },
+      {
+        "match": 79,
+        "teams": [
+          "England",
+          "DR Congo"
+        ]
+      },
+      {
+        "match": 80,
+        "teams": [
+          "Belgium",
+          "Senegal"
+        ]
+      },
+      {
+        "match": 81,
+        "teams": [
+          "United States",
+          "Bosnia and Herzegovina"
+        ]
+      },
+      {
+        "match": 82,
+        "teams": [
+          "Spain",
+          "Austria"
+        ]
+      },
+      {
+        "match": 83,
+        "teams": [
+          "Portugal",
+          "Croatia"
+        ]
+      },
+      {
+        "match": 84,
+        "teams": [
+          "Switzerland",
+          "Algeria"
+        ]
+      },
+      {
+        "match": 85,
+        "teams": [
+          "Australia",
+          "Egypt"
+        ]
+      },
+      {
+        "match": 86,
+        "teams": [
+          "Argentina",
+          "Cape Verde"
+        ]
+      },
+      {
+        "match": 87,
+        "teams": [
+          "Colombia",
+          "Ghana"
+        ]
+      },
+      {
+        "match": 88,
+        "teams": [
+          "Brazil",
+          "Japan"
+        ]
+      }
+    ],
+    "tree": {
+      "89": [
+        74,
+        77
+      ],
+      "90": [
+        75,
+        73
+      ],
+      "91": [
+        78,
+        76
+      ],
+      "92": [
+        79,
+        80
+      ],
+      "93": [
+        83,
+        84
+      ],
+      "94": [
+        81,
+        82
+      ],
+      "95": [
+        86,
+        88
+      ],
+      "96": [
+        85,
+        87
+      ],
+      "97": [
+        89,
+        90
+      ],
+      "98": [
+        93,
+        94
+      ],
+      "99": [
+        91,
+        92
+      ],
+      "100": [
+        95,
+        96
+      ],
+      "101": [
+        97,
+        98
+      ],
+      "102": [
+        99,
+        100
+      ],
+      "104": [
+        101,
+        102
+      ]
+    },
+    "rounds": {
+      "round_of_32": [
+        74,
+        77,
+        75,
+        73,
+        83,
+        84,
+        81,
+        82,
+        78,
+        76,
+        79,
+        80,
+        86,
+        88,
+        85,
+        87
+      ],
+      "round_of_16": [
+        89,
+        90,
+        93,
+        94,
+        91,
+        92,
+        95,
+        96
+      ],
+      "quarterfinal": [
+        97,
+        98,
+        99,
+        100
+      ],
+      "semifinal": [
+        101,
+        102
+      ],
+      "final": [
+        104
+      ]
+    },
+    "final_match": 104
+  },
+  "stages": [
+    "advance",
+    "round_of_16",
+    "quarterfinal",
+    "semifinal",
+    "final",
+    "champion"
+  ]
+}
