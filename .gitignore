@@ -12,6 +12,8 @@ CLAUDE.md
 # Raw downloads and large artifacts are reproducible, not committed.
 data/raw/
 data/processed/
+# runtime results cache; committed snapshot lives in src/forecaster/artifacts/
+data/forecaster/
 models/*.pkl
 models/*.pt
 models/*.joblib

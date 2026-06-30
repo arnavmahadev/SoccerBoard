@@ -10,6 +10,7 @@ matplotlib
 
 # Features & models
 numpy
+scipy              # Dixon-Coles MLE fit (forecaster; serving stays numpy-only)
 scikit-learn
 xgboost            # needs OpenMP at runtime (macOS: brew install libomp)
 torch              # MLP comparison (Phase 4)
