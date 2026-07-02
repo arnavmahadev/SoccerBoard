@@ -16,76 +16,76 @@
   "best_thirds": 8,
   "groups": {
     "A": [
-      "Algeria",
-      "Argentina",
-      "Austria",
-      "Jordan"
-    ],
-    "B": [
-      "Australia",
-      "Paraguay",
-      "Turkey",
-      "United States"
-    ],
-    "C": [
-      "Belgium",
-      "Egypt",
-      "Iran",
-      "New Zealand"
-    ],
-    "D": [
-      "Bosnia and Herzegovina",
-      "Canada",
-      "Qatar",
-      "Switzerland"
-    ],
-    "E": [
-      "Brazil",
-      "Haiti",
-      "Morocco",
-      "Scotland"
-    ],
-    "F": [
-      "Cape Verde",
-      "Saudi Arabia",
-      "Spain",
-      "Uruguay"
-    ],
-    "G": [
-      "Colombia",
-      "DR Congo",
-      "Portugal",
-      "Uzbekistan"
-    ],
-    "H": [
-      "Croatia",
-      "England",
-      "Ghana",
-      "Panama"
-    ],
-    "I": [
-      "Curaçao",
-      "Ecuador",
-      "Germany",
-      "Ivory Coast"
-    ],
-    "J": [
       "Czech Republic",
       "Mexico",
       "South Africa",
       "South Korea"
     ],
-    "K": [
+    "B": [
+      "Bosnia and Herzegovina",
+      "Canada",
+      "Qatar",
+      "Switzerland"
+    ],
+    "C": [
+      "Brazil",
+      "Haiti",
+      "Morocco",
+      "Scotland"
+    ],
+    "D": [
+      "Australia",
+      "Paraguay",
+      "Turkey",
+      "United States"
+    ],
+    "E": [
+      "Curaçao",
+      "Ecuador",
+      "Germany",
+      "Ivory Coast"
+    ],
+    "F": [
+      "Japan",
+      "Netherlands",
+      "Sweden",
+      "Tunisia"
+    ],
+    "G": [
+      "Belgium",
+      "Egypt",
+      "Iran",
+      "New Zealand"
+    ],
+    "H": [
+      "Cape Verde",
+      "Saudi Arabia",
+      "Spain",
+      "Uruguay"
+    ],
+    "I": [
       "France",
       "Iraq",
       "Norway",
       "Senegal"
     ],
+    "J": [
+      "Algeria",
+      "Argentina",
+      "Austria",
+      "Jordan"
+    ],
+    "K": [
+      "Colombia",
+      "DR Congo",
+      "Portugal",
+      "Uzbekistan"
+    ],
     "L": [
-      "Japan",
-      "Netherlands",
-      "Sweden",
-      "Tunisia"
+      "Croatia",
+      "England",
+      "Ghana",
+      "Panama"
     ]
   },
   "group_fixtures": [
@@ -571,31 +571,31 @@
         77
       ],
       "90": [
-        75,
-        73
+        73,
+        75
       ],
       "91": [
-        78,
+        88,
         76
       ],
       "92": [
-        79,
-        80
+        78,
+        79
       ],
       "93": [
         83,
-        84
+        82
       ],
       "94": [
         81,
-        82
+        80
       ],
       "95": [
         86,
-        88
+        85
       ],
       "96": [
-        85,
+        84,
         87
       ],
       "97": [
@@ -631,19 +631,19 @@
       "round_of_32": [
         74,
         77,
-        75,
         73,
+        75,
         83,
-        84,
-        81,
         82,
-        78,
-        76,
-        79,
+        81,
         80,
-        86,
         88,
+        76,
+        78,
+        79,
+        86,
         85,
+        84,
         87
       ],
       "round_of_16": [
@@ -670,7 +670,73 @@
         104
       ]
     },
-    "final_match": 104
+    "final_match": 104,
+    "result_overrides": [
+      {
+        "home": "South Africa",
+        "away": "Canada",
+        "home_goals": 0,
+        "away_goals": 1
+      },
+      {
+        "home": "Germany",
+        "away": "Paraguay",
+        "home_goals": 1,
+        "away_goals": 1,
+        "winner": "Paraguay",
+        "penalty": true
+      },
+      {
+        "home": "Netherlands",
+        "away": "Morocco",
+        "home_goals": 1,
+        "away_goals": 1,
+        "winner": "Morocco",
+        "penalty": true
+      },
+      {
+        "home": "Ivory Coast",
+        "away": "Norway",
+        "home_goals": 1,
+        "away_goals": 2
+      },
+      {
+        "home": "France",
+        "away": "Sweden",
+        "home_goals": 3,
+        "away_goals": 0
+      },
+      {
+        "home": "Mexico",
+        "away": "Ecuador",
+        "home_goals": 2,
+        "away_goals": 0
+      },
+      {
+        "home": "England",
+        "away": "DR Congo",
+        "home_goals": 2,
+        "away_goals": 1
+      },
+      {
+        "home": "Belgium",
+        "away": "Senegal",
+        "home_goals": 3,
+        "away_goals": 2
+      },
+      {
+        "home": "United States",
+        "away": "Bosnia and Herzegovina",
+        "home_goals": 2,
+        "away_goals": 0
+      },
+      {
+        "home": "Brazil",
+        "away": "Japan",
+        "home_goals": 2,
+        "away_goals": 1
+      }
+    ]
   },
   "stages": [
     "advance",

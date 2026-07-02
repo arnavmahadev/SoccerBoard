@@ -31,9 +31,13 @@ from forecaster.data import (
 )
 from forecaster.formats.base import MatchSampler
 from forecaster.formats.world_cup import WorldCupFormat
+from forecaster.player_model import fetch_lineup_matches, fit_player_deltas
 
 FIT_SINCE = "2010-01-01"   # history window for the production fit (time-decayed)
-XI = 0.35
+# xi (time-decay) and reg (ridge) chosen by an out-of-sample grid search on the
+# backtest split (min log-loss): xi=0.25 (longer memory than 0.35) generalises
+# slightly better and leans less on a handful of recent results per team.
+XI = 0.25
 REG = 0.02
 N_SIMS = 20000             # group forecast is committed, so simulate generously
 
@@ -64,6 +68,14 @@ def main() -> None:
     (ARTIFACTS / "group_forecast.json").write_text(
         json.dumps({cfg["id"]: forecast}, indent=2, ensure_ascii=False)
     )
+
+    print("Fetching StatsBomb lineup data + fitting player deltas...")
+    lineup_matches = fetch_lineup_matches(force=False)
+    print(f"  {len(lineup_matches)} lineup matches across international tournaments")
+    player_deltas = fit_player_deltas(params, lineup_matches)
+    player_deltas.to_json(ARTIFACTS / "player_deltas.json")
+    print(f"  {len(player_deltas.players)} players fitted "
+          f"({player_deltas.n_lineup_matches} valid matches)")
 
     print("Backtest + calibration...")
     report = evaluate.backtest(xi=XI, reg=REG)

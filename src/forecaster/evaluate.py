@@ -80,7 +80,7 @@ def backtest(
     train_since: str = "2008-01-01",
     cutoff: str = "2024-01-01",
     test_end: str = WC2026_KICKOFF,
-    xi: float = 0.35,
+    xi: float = 0.25,
     reg: float = 0.02,
 ) -> dict:
     """Train < cutoff, test in [cutoff, test_end). Returns a metrics dict."""

@@ -1,292 +1,292 @@
 {
   "world_cup_2026": {
     "Algeria": {
-      "group": "A",
-      "win_group": 0.1118,
-      "top2": 0.428,
-      "advance": 0.6911
+      "group": "J",
+      "win_group": 0.10745,
+      "top2": 0.4233,
+      "advance": 0.69025
     },
     "Argentina": {
-      "group": "A",
-      "win_group": 0.71545,
-      "top2": 0.91745,
-      "advance": 0.98
+      "group": "J",
+      "win_group": 0.71735,
+      "top2": 0.92185,
+      "advance": 0.9804
     },
     "Austria": {
-      "group": "A",
-      "win_group": 0.1552,
-      "top2": 0.54255,
-      "advance": 0.77025
+      "group": "J",
+      "win_group": 0.15805,
+      "top2": 0.5446,
+      "advance": 0.7704
     },
     "Jordan": {
-      "group": "A",
-      "win_group": 0.01755,
-      "top2": 0.112,
-      "advance": 0.24005
+      "group": "J",
+      "win_group": 0.01715,
+      "top2": 0.11025,
+      "advance": 0.23765
     },
     "Australia": {
-      "group": "B",
-      "win_group": 0.26365,
-      "top2": 0.52075,
-      "advance": 0.7088
+      "group": "D",
+      "win_group": 0.2498,
+      "top2": 0.5021,
+      "advance": 0.6937
     },
     "Paraguay": {
-      "group": "B",
-      "win_group": 0.21245,
-      "top2": 0.46205,
-      "advance": 0.66045
+      "group": "D",
+      "win_group": 0.2029,
+      "top2": 0.44565,
+      "advance": 0.6446
     },
     "Turkey": {
-      "group": "B",
-      "win_group": 0.285,
-      "top2": 0.5346,
-      "advance": 0.7206
+      "group": "D",
+      "win_group": 0.27295,
+      "top2": 0.52115,
+      "advance": 0.70675
     },
     "United States": {
-      "group": "B",
-      "win_group": 0.2389,
-      "top2": 0.4826,
-      "advance": 0.6685
+      "group": "D",
+      "win_group": 0.27435,
+      "top2": 0.5311,
+      "advance": 0.7119
     },
     "Belgium": {
-      "group": "C",
-      "win_group": 0.6161,
-      "top2": 0.8626,
-      "advance": 0.95055
+      "group": "G",
+      "win_group": 0.63415,
+      "top2": 0.87325,
+      "advance": 0.9572
     },
     "Egypt": {
-      "group": "C",
-      "win_group": 0.13205,
-      "top2": 0.4133,
-      "advance": 0.6593
+      "group": "G",
+      "win_group": 0.13135,
+      "top2": 0.42205,
+      "advance": 0.66965
     },
     "Iran": {
-      "group": "C",
-      "win_group": 0.2259,
-      "top2": 0.5949,
-      "advance": 0.78855
+      "group": "G",
+      "win_group": 0.21375,
+      "top2": 0.5923,
+      "advance": 0.79105
     },
     "New Zealand": {
-      "group": "C",
-      "win_group": 0.02595,
-      "top2": 0.1292,
-      "advance": 0.2649
+      "group": "G",
+      "win_group": 0.02075,
+      "top2": 0.1124,
+      "advance": 0.2407
     },
     "Bosnia and Herzegovina": {
-      "group": "D",
-      "win_group": 0.0553,
-      "top2": 0.2327,
-      "advance": 0.512
+      "group": "B",
+      "win_group": 0.06585,
+      "top2": 0.2534,
+      "advance": 0.51765
     },
     "Canada": {
-      "group": "D",
-      "win_group": 0.34275,
-      "top2": 0.7811,
-      "advance": 0.91165
+      "group": "B",
+      "win_group": 0.3358,
+      "top2": 0.7546,
+      "advance": 0.89535
     },
     "Qatar": {
-      "group": "D",
-      "win_group": 0.01855,
-      "top2": 0.0972,
-      "advance": 0.2515
+      "group": "B",
+      "win_group": 0.02765,
+      "top2": 0.1212,
+      "advance": 0.283
     },
     "Switzerland": {
-      "group": "D",
-      "win_group": 0.5834,
-      "top2": 0.889,
-      "advance": 0.96585
+      "group": "B",
+      "win_group": 0.5707,
+      "top2": 0.8708,
+      "advance": 0.95645
     },
     "Brazil": {
-      "group": "E",
-      "win_group": 0.58495,
-      "top2": 0.8809,
-      "advance": 0.9825
+      "group": "C",
+      "win_group": 0.6323,
+      "top2": 0.90185,
+      "advance": 0.9875
     },
     "Haiti": {
-      "group": "E",
-      "win_group": 0.00355,
-      "top2": 0.0229,
-      "advance": 0.07715
+      "group": "C",
+      "win_group": 0.003,
+      "top2": 0.02445,
+      "advance": 0.0789
     },
     "Morocco": {
-      "group": "E",
-      "win_group": 0.312,
-      "top2": 0.74855,
-      "advance": 0.937
+      "group": "C",
+      "win_group": 0.27485,
+      "top2": 0.73505,
+      "advance": 0.9287
     },
     "Scotland": {
-      "group": "E",
-      "win_group": 0.0995,
-      "top2": 0.34765,
-      "advance": 0.7481
+      "group": "C",
+      "win_group": 0.08985,
+      "top2": 0.33865,
+      "advance": 0.7317
     },
     "Cape Verde": {
-      "group": "F",
-      "win_group": 0.0102,
-      "top2": 0.0985,
-      "advance": 0.25265
+      "group": "H",
+      "win_group": 0.01055,
+      "top2": 0.0993,
+      "advance": 0.2661
     },
     "Saudi Arabia": {
-      "group": "F",
-      "win_group": 0.018,
-      "top2": 0.13345,
-      "advance": 0.3501
+      "group": "H",
+      "win_group": 0.0177,
+      "top2": 0.1253,
+      "advance": 0.3395
     },
     "Spain": {
-      "group": "F",
-      "win_group": 0.7552,
-      "top2": 0.9663,
-      "advance": 0.9921
+      "group": "H",
+      "win_group": 0.7397,
+      "top2": 0.96445,
+      "advance": 0.99125
     },
     "Uruguay": {
-      "group": "F",
-      "win_group": 0.2166,
-      "top2": 0.80175,
-      "advance": 0.90565
+      "group": "H",
+      "win_group": 0.23205,
+      "top2": 0.81095,
+      "advance": 0.91015
     },
     "Colombia": {
-      "group": "G",
-      "win_group": 0.40505,
-      "top2": 0.77905,
-      "advance": 0.8947
+      "group": "K",
+      "win_group": 0.4044,
+      "top2": 0.79615,
+      "advance": 0.9079
     },
     "DR Congo": {
-      "group": "G",
-      "win_group": 0.04775,
-      "top2": 0.18915,
-      "advance": 0.37865
+      "group": "K",
+      "win_group": 0.0407,
+      "top2": 0.16985,
+      "advance": 0.3606
     },
     "Portugal": {
-      "group": "G",
-      "win_group": 0.49315,
-      "top2": 0.8266,
-      "advance": 0.92365
+      "group": "K",
+      "win_group": 0.50605,
+      "top2": 0.83835,
+      "advance": 0.931
     },
     "Uzbekistan": {
-      "group": "G",
-      "win_group": 0.05405,
-      "top2": 0.2052,
-      "advance": 0.41225
+      "group": "K",
+      "win_group": 0.04885,
+      "top2": 0.19565,
+      "advance": 0.41085
     },
     "Croatia": {
-      "group": "H",
-      "win_group": 0.287,
-      "top2": 0.7951,
-      "advance": 0.91185
+      "group": "L",
+      "win_group": 0.2917,
+      "top2": 0.7918,
+      "advance": 0.9091
     },
     "England": {
-      "group": "H",
-      "win_group": 0.67115,
-      "top2": 0.9391,
-      "advance": 0.9836
+      "group": "L",
+      "win_group": 0.66465,
+      "top2": 0.9364,
+      "advance": 0.9814
     },
     "Ghana": {
-      "group": "H",
-      "win_group": 0.0243,
-      "top2": 0.1497,
-      "advance": 0.37155
+      "group": "L",
+      "win_group": 0.0254,
+      "top2": 0.1556,
+      "advance": 0.3843
     },
     "Panama": {
-      "group": "H",
-      "win_group": 0.01755,
-      "top2": 0.1161,
-      "advance": 0.29655
+      "group": "L",
+      "win_group": 0.01825,
+      "top2": 0.1162,
+      "advance": 0.2954
     },
     "Curaçao": {
-      "group": "I",
-      "win_group": 0.0025,
-      "top2": 0.01675,
-      "advance": 0.0576
+      "group": "E",
+      "win_group": 0.0029,
+      "top2": 0.0181,
+      "advance": 0.0579
     },
     "Ecuador": {
-      "group": "I",
-      "win_group": 0.30565,
-      "top2": 0.7243,
-      "advance": 0.92815
+      "group": "E",
+      "win_group": 0.29385,
+      "top2": 0.71225,
+      "advance": 0.92675
     },
     "Germany": {
-      "group": "I",
-      "win_group": 0.57175,
-      "top2": 0.86505,
-      "advance": 0.98215
+      "group": "E",
+      "win_group": 0.57985,
+      "top2": 0.87085,
+      "advance": 0.9827
     },
     "Ivory Coast": {
-      "group": "I",
-      "win_group": 0.1201,
-      "top2": 0.3939,
-      "advance": 0.77435
+      "group": "E",
+      "win_group": 0.1234,
+      "top2": 0.3988,
+      "advance": 0.7782
     },
     "Czech Republic": {
-      "group": "J",
-      "win_group": 0.2231,
-      "top2": 0.51125,
-      "advance": 0.7147
+      "group": "A",
+      "win_group": 0.23075,
+      "top2": 0.5181,
+      "advance": 0.7166
     },
     "Mexico": {
-      "group": "J",
-      "win_group": 0.4827,
-      "top2": 0.7544,
-      "advance": 0.88735
+      "group": "A",
+      "win_group": 0.4738,
+      "top2": 0.74985,
+      "advance": 0.8822
     },
     "South Africa": {
-      "group": "J",
-      "win_group": 0.07195,
-      "top2": 0.22545,
-      "advance": 0.3963
+      "group": "A",
+      "win_group": 0.07755,
+      "top2": 0.2342,
+      "advance": 0.41085
     },
     "South Korea": {
-      "group": "J",
-      "win_group": 0.22225,
-      "top2": 0.5089,
-      "advance": 0.7118
+      "group": "A",
+      "win_group": 0.2179,
+      "top2": 0.49785,
+      "advance": 0.6985
     },
     "France": {
-      "group": "K",
-      "win_group": 0.5275,
-      "top2": 0.82205,
-      "advance": 0.9374
+      "group": "I",
+      "win_group": 0.56705,
+      "top2": 0.83945,
+      "advance": 0.94575
     },
     "Iraq": {
-      "group": "K",
-      "win_group": 0.01545,
-      "top2": 0.0799,
-      "advance": 0.19155
+      "group": "I",
+      "win_group": 0.018,
+      "top2": 0.0875,
+      "advance": 0.20085
     },
     "Norway": {
-      "group": "K",
-      "win_group": 0.29875,
-      "top2": 0.6545,
-      "advance": 0.85135
+      "group": "I",
+      "win_group": 0.25235,
+      "top2": 0.618,
+      "advance": 0.8255
     },
     "Senegal": {
-      "group": "K",
-      "win_group": 0.1583,
-      "top2": 0.44355,
-      "advance": 0.71245
+      "group": "I",
+      "win_group": 0.1626,
+      "top2": 0.45505,
+      "advance": 0.71495
     },
     "Japan": {
-      "group": "L",
-      "win_group": 0.3176,
-      "top2": 0.6524,
-      "advance": 0.81885
+      "group": "F",
+      "win_group": 0.27475,
+      "top2": 0.5899,
+      "advance": 0.7712
     },
     "Netherlands": {
-      "group": "L",
-      "win_group": 0.48855,
-      "top2": 0.7766,
-      "advance": 0.90115
+      "group": "F",
+      "win_group": 0.49845,
+      "top2": 0.77805,
+      "advance": 0.89765
     },
     "Sweden": {
-      "group": "L",
-      "win_group": 0.1234,
-      "top2": 0.3421,
-      "advance": 0.5552
+      "group": "F",
+      "win_group": 0.14555,
+      "top2": 0.3808,
+      "advance": 0.5897
     },
     "Tunisia": {
-      "group": "L",
-      "win_group": 0.07045,
-      "top2": 0.2289,
-      "advance": 0.41755
+      "group": "F",
+      "win_group": 0.08125,
+      "top2": 0.25125,
+      "advance": 0.43965
     }
   }
 }

@@ -29,6 +29,22 @@ from forecaster.data import ARTIFACTS, WC2026_KICKOFF, tournament_matches
 HOSTS = ["United States", "Canada", "Mexico"]
 GROUP_STAGE_END = "2026-06-27"
 
+# Official FIFA WC2026 group letters from the December 2024 draw.
+OFFICIAL_GROUP = {
+    "Czech Republic": "A", "Mexico": "A", "South Africa": "A", "South Korea": "A",
+    "Bosnia and Herzegovina": "B", "Canada": "B", "Qatar": "B", "Switzerland": "B",
+    "Brazil": "C", "Haiti": "C", "Morocco": "C", "Scotland": "C",
+    "Australia": "D", "Paraguay": "D", "Turkey": "D", "United States": "D",
+    "Curaçao": "E", "Ecuador": "E", "Germany": "E", "Ivory Coast": "E",
+    "Japan": "F", "Netherlands": "F", "Sweden": "F", "Tunisia": "F",
+    "Belgium": "G", "Egypt": "G", "Iran": "G", "New Zealand": "G",
+    "Cape Verde": "H", "Saudi Arabia": "H", "Spain": "H", "Uruguay": "H",
+    "France": "I", "Iraq": "I", "Norway": "I", "Senegal": "I",
+    "Algeria": "J", "Argentina": "J", "Austria": "J", "Jordan": "J",
+    "Colombia": "K", "DR Congo": "K", "Portugal": "K", "Uzbekistan": "K",
+    "Croatia": "L", "England": "L", "Ghana": "L", "Panama": "L",
+}
+
 # Official R32 bracket, validated against the live schedule by team + date.
 # match_number -> (team A, team B). Order is FIFA's match numbering 73..88.
 ROUND_OF_32 = {
@@ -53,8 +69,8 @@ ROUND_OF_32 = {
 # Knockout tree adjacency (match_number -> [feeder match, feeder match]).
 # Winners of the two feeder matches meet in this match.
 KNOCKOUT_TREE = {
-    89: [74, 77], 90: [75, 73], 91: [78, 76], 92: [79, 80],
-    93: [83, 84], 94: [81, 82], 95: [86, 88], 96: [85, 87],
+    89: [74, 77], 90: [73, 75], 91: [88, 76], 92: [78, 79],
+    93: [83, 82], 94: [81, 80], 95: [86, 85], 96: [84, 87],
     97: [89, 90], 98: [93, 94], 99: [91, 92], 100: [95, 96],
     101: [97, 98], 102: [99, 100],
     104: [101, 102],
@@ -94,6 +110,22 @@ def bracket_display_order(rounds: dict, tree: dict, final_match: int) -> dict:
     pos = {m: i for i, m in enumerate(leaves(final_match))}  # R32 left-to-right
     return {r: sorted(ms, key=lambda m: pos[leaves(m)[0]]) for r, ms in rounds.items()}
 # Ordered stage labels for reporting (what the Monte Carlo driver aggregates).
+# Known knockout results not yet in the live results feed. Applied by
+# knockout_played() as overrides so the bracket reflects actual scores
+# immediately. penalty=True marks games decided by shootout (score is AET).
+RESULT_OVERRIDES: list[dict] = [
+    {"home": "South Africa", "away": "Canada", "home_goals": 0, "away_goals": 1},
+    {"home": "Germany", "away": "Paraguay", "home_goals": 1, "away_goals": 1, "winner": "Paraguay", "penalty": True},
+    {"home": "Netherlands", "away": "Morocco", "home_goals": 1, "away_goals": 1, "winner": "Morocco", "penalty": True},
+    {"home": "Ivory Coast", "away": "Norway", "home_goals": 1, "away_goals": 2},
+    {"home": "France", "away": "Sweden", "home_goals": 3, "away_goals": 0},
+    {"home": "Mexico", "away": "Ecuador", "home_goals": 2, "away_goals": 0},
+    {"home": "England", "away": "DR Congo", "home_goals": 2, "away_goals": 1},
+    {"home": "Belgium", "away": "Senegal", "home_goals": 3, "away_goals": 2},
+    {"home": "United States", "away": "Bosnia and Herzegovina", "home_goals": 2, "away_goals": 0},
+    {"home": "Brazil", "away": "Japan", "home_goals": 2, "away_goals": 1},
+]
+
 STAGES = [
     "advance",        # reached the Round of 32 (survived the group)
     "round_of_16",
@@ -138,8 +170,12 @@ def _derive_groups(matches) -> tuple[dict[str, list[str]], list[dict]]:
     components.sort()
     assert len(components) == 12, f"expected 12 groups, got {len(components)}"
     assert all(len(c) == 4 for c in components), "every group must have 4 teams"
-    groups = {chr(65 + i): comp for i, comp in enumerate(components)}
-    return groups, group_fixtures
+    groups = {}
+    for comp in components:
+        letter = OFFICIAL_GROUP.get(comp[0])
+        assert letter is not None, f"No official group letter for team {comp[0]}"
+        groups[letter] = comp
+    return dict(sorted(groups.items())), group_fixtures
 
 
 def build_config() -> dict:
@@ -188,6 +224,7 @@ def build_config() -> dict:
             "tree": {str(k): v for k, v in KNOCKOUT_TREE.items()},
             "rounds": bracket_display_order(ROUNDS, KNOCKOUT_TREE, 104),
             "final_match": 104,
+            "result_overrides": RESULT_OVERRIDES,
         },
         "stages": STAGES,
     }

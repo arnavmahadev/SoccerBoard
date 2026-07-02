@@ -29,9 +29,22 @@
       `srcset="https://flagcdn.com/h40/${c}.png 2x" alt="" loading="lazy" ` +
       `onerror="this.style.display='none'">`;
   }
-  const named = (t) => (t ? flag(t) + esc(t) : "TBD");
+  const ABBR = {
+    "Algeria":"ALG","Argentina":"ARG","Austria":"AUT","Jordan":"JOR","Australia":"AUS",
+    "Paraguay":"PAR","Turkey":"TUR","United States":"USA","Belgium":"BEL","Egypt":"EGY",
+    "Iran":"IRN","New Zealand":"NZL","Bosnia and Herzegovina":"BIH","Canada":"CAN","Qatar":"QAT",
+    "Switzerland":"SUI","Brazil":"BRA","Haiti":"HAI","Morocco":"MAR","Scotland":"SCO",
+    "Cape Verde":"CPV","Saudi Arabia":"KSA","Spain":"ESP","Uruguay":"URU","Colombia":"COL",
+    "DR Congo":"COD","Portugal":"POR","Uzbekistan":"UZB","Croatia":"CRO","England":"ENG",
+    "Ghana":"GHA","Panama":"PAN","Curaçao":"CUW","Ecuador":"ECU","Germany":"GER",
+    "Ivory Coast":"CIV","Czech Republic":"CZE","Mexico":"MEX","South Africa":"RSA","South Korea":"KOR",
+    "France":"FRA","Iraq":"IRQ","Norway":"NOR","Senegal":"SEN","Japan":"JPN",
+    "Netherlands":"NED","Sweden":"SWE","Tunisia":"TUN",
+  };
+  const named    = (t) => (t ? flag(t) + esc(t) : "TBD");
+  const namedShort = (t) => (t ? flag(t) + esc(ABBR[t] || t) : `<span class="bk-tbd">TBD</span>`);
 
-  const state = { comp: null, teams: [], bracket: null, view: "prediction" };
+  const state = { comp: null, teams: [], bracket: null, view: "prediction", tab: "live", adjust: {}, openNews: new Set() };
 
   async function init() {
     let comps;
@@ -54,8 +67,89 @@
       };
     });
 
+    $("fc-tabs").querySelectorAll(".fc-tab").forEach((btn) => {
+      btn.onclick = async () => {
+        state.tab = btn.dataset.tab;
+        $("fc-tabs").querySelectorAll(".fc-tab").forEach((b) => b.classList.toggle("active", b === btn));
+        try { await loadBracketAndOdds(); }
+        catch (e) { console.error("Tab load failed:", state.tab, e); }
+      };
+    });
+
+    // Delegated once: clicking a team's "news" tag expands its detail panel.
+    // (#odds survives innerHTML refreshes, so open panels persist via state.)
+    $("odds").addEventListener("click", (e) => {
+      const btn = e.target.closest(".news-chip");
+      if (!btn) return;
+      const team = btn.dataset.team;
+      const open = !state.openNews.has(team);
+      open ? state.openNews.add(team) : state.openNews.delete(team);
+      btn.setAttribute("aria-expanded", open);
+      btn.querySelector(".chev").textContent = open ? "▴" : "▾";
+      btn.closest(".odds-item").querySelector(".news-panel").classList.toggle("open", open);
+    });
+
+    await loadAdjustments(); // before the odds render, so adjusted teams get flagged
     await Promise.all([loadBracketAndOdds(), headToHead(), loadGroups(), loadAccuracy()]);
     setInterval(loadBracketAndOdds, 120000); // refresh as games are played
+  }
+
+  // ---- news overlay (manual injury/squad adjustments) ---------------------
+  async function loadAdjustments() {
+    let a;
+    try { a = await api("/forecaster/adjustments?competition=" + state.comp); }
+    catch (e) { return; }
+    state.adjust = {};
+    (a.teams || []).forEach((r) => { state.adjust[r.team] = r; });
+    renderAdjustments(a.teams || []);
+  }
+
+  // the little clickable "news" tag next to an adjusted team in the odds list
+  function adjChip(team, open) {
+    const r = state.adjust[team];
+    if (!r) return "";
+    const weaker = (r.items || []).some((it) => it.att_delta > 0 || it.def_delta > 0);
+    return ` <button class="news-chip ${weaker ? "down" : ""}" data-team="${esc(team)}" ` +
+      `aria-expanded="${open}" title="Injury news I've factored in. Click for details.">` +
+      `news <span class="chev">${open ? "▴" : "▾"}</span></button>`;
+  }
+
+  // plain-English summary of which players are out and by how much
+  function impactSentence(r) {
+    const totalAtt = (r.items || []).reduce((s, it) => s + (it.att_delta || 0), 0);
+    const totalDef = (r.items || []).reduce((s, it) => s + (it.def_delta || 0), 0);
+    const bits = [];
+    if (totalAtt > 0.005) bits.push(`attack by <b>${totalAtt.toFixed(2)} expected goals/game</b>`);
+    if (totalDef > 0.005) bits.push(`defence by <b>${totalDef.toFixed(2)} expected goals/game</b>`);
+    if (!bits.length) return "";
+    return `<p class="news-impact">Based on their StatsBomb lineup data, I've reduced their ` +
+      `${bits.join(" and ")}.</p>`;
+  }
+
+  // the expandable detail panel under an adjusted team's row
+  function newsPanel(r) {
+    const items = (r.items || []).map((it) =>
+      `<li><b>${esc(it.player)}</b> ${esc(it.issue)}</li>`).join("");
+    const links = (r.sources || []).map((s) => s.url
+      ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`
+      : esc(s.label)).join(", ");
+    return `<div class="news-panel${state.openNews.has(r.team) ? " open" : ""}">` +
+      (items ? `<ul class="news-items">${items}</ul>` : "") +
+      impactSentence(r) +
+      (links ? `<p class="news-src">More on this: ${links}</p>` : "") +
+      `</div>`;
+  }
+
+  function renderAdjustments(rows) {
+    const el = $("adjust-note");
+    if (!el) return;
+    el.innerHTML = rows.length
+      ? `These odds account for the latest injury news. Teams tagged ` +
+        `<span class="news-chip down static">news ▾</span> have a player or two out — I've ` +
+        `looked up each player's learned attack/defence contribution from StatsBomb lineup data ` +
+        `and subtracted it from their team's effective strength. Tap a tag to see who's out and ` +
+        `by how much.`
+      : "";
   }
 
   const pick = (arr, want, i) => (arr.includes(want) ? want : arr[i] || arr[0]);
@@ -67,11 +161,22 @@
   async function loadBracketAndOdds() {
     const [b, sim] = await Promise.all([
       api("/forecaster/bracket?competition=" + state.comp),
-      api("/forecaster/simulation?competition=" + state.comp),
+      api("/forecaster/simulation?competition=" + state.comp + "&mode=" + state.tab),
     ]);
     state.bracket = b;
     const n = b.settled_count;
-    $("asof").textContent = `Updated through ${niceDate(b.as_of)}. ${n} knockout game${n === 1 ? "" : "s"} played so far.`;
+    const asofEl = $("asof");
+    if (state.tab === "pretournament") {
+      asofEl.textContent = "Pre-tournament: base DC ratings, no injury adjustments, simulating all knockout games from scratch.";
+      $("bk-toggle").style.display = "none";
+      state.view = "prediction";
+    } else if (state.tab === "reality") {
+      asofEl.textContent = `Reality: DC model re-fitted with all WC2026 results through ${niceDate(b.as_of)}. ${n} knockout game${n === 1 ? "" : "s"} played.`;
+      $("bk-toggle").style.display = "";
+    } else {
+      asofEl.textContent = `Live: updated through ${niceDate(b.as_of)}. ${n} knockout game${n === 1 ? "" : "s"} played — pre-tournament ratings, injury adjustments applied.`;
+      $("bk-toggle").style.display = "";
+    }
     renderOdds(sim);
     renderBracket();
   }
@@ -79,19 +184,24 @@
   function renderOdds(sim) {
     const top = sim.teams.slice().sort((a, b) => b.champion - a.champion).slice(0, 10);
     const max = top[0].champion || 1;
-    $("odds").innerHTML = top.map((r, i) => `
-      <div class="odds-row ${i === 0 ? "lead-team" : ""}">
-        <span class="odds-rank">${i + 1}</span>
-        <span class="odds-name">${flag(r.team)}${esc(r.team)}</span>
-        <span class="odds-track"><span class="odds-fill" style="width:${(r.champion / max) * 100}%"></span></span>
-        <span class="odds-val">${pct(r.champion, r.champion < 0.1 ? 1 : 0)}</span>
-      </div>`).join("");
+    $("odds").innerHTML = top.map((r, i) => {
+      const open = state.openNews.has(r.team);
+      const panel = state.adjust[r.team] ? newsPanel(state.adjust[r.team]) : "";
+      return `<div class="odds-item">
+        <div class="odds-row ${i === 0 ? "lead-team" : ""}">
+          <span class="odds-rank">${i + 1}</span>
+          <span class="odds-name">${flag(r.team)}${esc(r.team)}${adjChip(r.team, open)}</span>
+          <span class="odds-track"><span class="odds-fill" style="width:${(r.champion / max) * 100}%"></span></span>
+          <span class="odds-val">${pct(r.champion, r.champion < 0.1 ? 1 : 0)}</span>
+        </div>${panel}
+      </div>`;
+    }).join("");
   }
 
   // ---- bracket rendering --------------------------------------------------
   function bkRow(name, meta, cls) {
     return `<div class="bk-row ${cls || ""}">
-      <span class="bk-name">${named(name)}</span>
+      <span class="bk-name">${namedShort(name)}</span>
       <span class="bk-meta">${meta || ""}</span></div>`;
   }
 
@@ -114,8 +224,8 @@
     }
     const aWin = m.winner === m.a;
     const mark = m.correct ? `<span class="mark hit">✓</span>` : `<span class="mark miss">✗</span>`;
-    const sa = `${m.score[0]} ${aWin ? mark : ""}`.trim();
-    const sb = `${m.score[1]} ${!aWin ? mark : ""}`.trim();
+    const sa = `${aWin ? mark + " " : ""}${m.score[0]}`;
+    const sb = `${!aWin ? mark + " " : ""}${m.score[1]}`;
     return `<div class="bk-match"><div class="bk-box">
       ${bkRow(m.a, sa, aWin ? "win" : "")}
       ${bkRow(m.b, sb, aWin ? "" : "win")}
@@ -129,7 +239,7 @@
     const isPred = state.view === "prediction";
 
     if (isPred) {
-      $("bk-note").innerHTML = `The model's single most likely outcome for all 31 knockout games, advanced to a predicted winner: <b>${esc(data.champion)}</b>.`;
+      $("bk-note").innerHTML = `My single most likely winner of each knockout game, advanced round by round to a champion: <b>${esc(data.champion)}</b>. Each percentage is that team's chance of winning that one game.`;
     } else {
       const c = data.correct, d = data.decided;
       $("bk-note").innerHTML = d
@@ -138,22 +248,58 @@
     }
 
     const renderMatch = isPred ? predMatch : actualMatch;
-    const cols = data.rounds.map((rnd) => {
-      const isFinal = rnd.round === "final";
-      return `<div class="bk-col ${isFinal ? "pre-champ" : ""}">
-        <div class="bk-head">${rnd.label}</div>
-        <div class="bk-list">${rnd.matches.map(renderMatch).join("")}</div></div>`;
-    }).join("");
+    const byRound = {};
+    data.rounds.forEach((r) => { byRound[r.round] = r; });
+
+    // Mirrored two-sided bracket: left half flows inward, right half mirrors.
+    // Splitting each round's matches down the middle gives the two sides.
+    const side = (round, which) => {
+      const r = byRound[round];
+      if (!r) return [];
+      const mid = Math.ceil(r.matches.length / 2);
+      return which === "l" ? r.matches.slice(0, mid) : r.matches.slice(mid);
+    };
+    const label = (round) => (byRound[round] ? byRound[round].label : "");
+    const halfCol = (round, which) => {
+      const ms = side(round, which);
+      return `<div class="bk-col ${which}${ms.length <= 1 ? " no-join" : ""}">
+        <div class="bk-head">${label(round)}</div>
+        <div class="bk-list">${ms.map(renderMatch).join("")}</div></div>`;
+    };
+
+    const flow = ["round_of_32", "round_of_16", "quarterfinal", "semifinal"];
+    const left  = flow.map((r) => halfCol(r, "l")).join("");
+    const right = flow.slice().reverse().map((r) => halfCol(r, "r")).join("");
+
+    const finalRound = byRound.final;
+    const finalM = finalRound && finalRound.matches[0];
+    const sf = byRound.semifinal ? byRound.semifinal.matches : [];
+    const loser = (m) => (m && m.winner ? (m.winner === m.a ? m.b : m.a) : null);
+    const l1 = loser(sf[0]), l2 = loser(sf[1]);
 
     const champTbd = !data.champion;
-    const champ = `<div class="bk-col champ-col">
-      <div class="bk-head"></div>
-      <div class="bk-list"><div class="bk-match"><div class="bk-champ ${champTbd ? "tbd" : ""}">
-        <span class="cl">${isPred ? "Predicted champion" : "Champion"}</span>
-        <span class="cn">${champTbd ? "TBD" : named(data.champion)}</span>
-      </div></div></div></div>`;
+    const center = `<div class="bk-col center-col no-join">
+      <div class="bk-final-content">
+        <div class="bk-champ ${champTbd ? "tbd" : ""}">
+          <span class="trophy" aria-hidden="true">🏆</span>
+          <span class="cl">${isPred ? "Predicted champion" : "Champion"}</span>
+          <span class="cn">${champTbd ? "TBD" : named(data.champion)}</span>
+        </div>
+        <div class="bk-center-node">
+          <div class="bk-head">${label("final") || "Final"}</div>
+          ${finalM ? renderMatch(finalM) : ""}
+        </div>
+        <div class="bk-bronze">
+          <div class="bk-head">Third place</div>
+          <div class="bk-match"><div class="bk-box">
+            ${bkRow(l1, "", l1 ? "" : "tbd")}${bkRow(l2, "", l2 ? "" : "tbd")}
+          </div></div>
+        </div>
+      </div></div>`;
 
-    $("bracket").innerHTML = cols + champ;
+    const bk = $("bracket");
+    bk.classList.add("two");
+    bk.innerHTML = left + center + right;
   }
 
   // ---- head to head -------------------------------------------------------
@@ -215,10 +361,14 @@
       on log-loss versus ${mt.baseline.log_loss.toFixed(2)} for a naive baseline, where
       lower is better.</p>`;
     $("fc-foot").textContent =
-      `Scoreline model: Dixon-Coles (bivariate Poisson), fit on ~49k international results. ` +
-      `Tournament odds from 10,000 Monte Carlo simulations. The strength model is frozen before ` +
-      `the tournament; results only decide who advances. Live results come from a public ` +
-      `community dataset, which can lag actual results by a few hours.`;
+      `The scoreline model is a Dixon-Coles fit (bivariate Poisson) on about 49k international ` +
+      `results, and the title odds come from 10,000 Monte Carlo simulations. Team strength is ` +
+      `frozen before the tournament, so results only decide who advances, not how good a team is. ` +
+      `Injuries and suspensions are handled via a second-stage player model: per-player ` +
+      `attack/defence contributions fitted on StatsBomb lineup data (WC 2018 & 2022, Euros, Copa ` +
+      `América, AFCON). When a player is listed as absent, their learned delta is subtracted from ` +
+      `their team's effective strength — tagged under the title odds. Live results come from a ` +
+      `public community dataset, so they can lag the real world by a few hours.`;
   }
 
   function renderCalib(bins) {

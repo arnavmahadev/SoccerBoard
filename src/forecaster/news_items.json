@@ -1,0 +1,23 @@
+{
+  "_about": "Current injury and suspension news for active competitions. Per team, a list of absent players with a description and source. The serving layer looks each player up in the fitted PlayerDeltas artifact (built from StatsBomb lineup data) and subtracts their learned attack/defense contribution from their team's effective strength. No tier or multiplier needed — the magnitude comes from the model.",
+  "world_cup_2026": {
+    "updated": "2026-07-01",
+    "teams": {
+      "Spain": [
+        {"player": "Nico Williams", "issue": "hurt his adductor against Uruguay and is a doubt for the knockouts", "source": "ESPN", "url": "https://www.espn.com/soccer/story/_/id/49200729/spain-nico-williams-injury-yeremy-pino-2026-world-cup"},
+        {"player": "Yeremy Pino", "issue": "sprained his shoulder against Uruguay and may miss the rest of the tournament", "source": "ESPN", "url": "https://www.espn.com/soccer/story/_/id/49200729/spain-nico-williams-injury-yeremy-pino-2026-world-cup"}
+      ],
+      "Brazil": [
+        {"player": "Rodrygo", "issue": "is out of the squad", "source": "Yahoo Sports", "url": "https://sports.yahoo.com/articles/world-cup-injury-tracker-neymar-093810239.html"},
+        {"player": "Eder Militao", "issue": "is out of the squad", "source": "Yahoo Sports", "url": "https://sports.yahoo.com/articles/world-cup-injury-tracker-neymar-093810239.html"}
+      ],
+      "England": [
+        {"player": "Reece James", "issue": "has a hamstring problem and is expected to miss the next couple of games", "source": "ESPN", "url": "https://www.espn.com/soccer/story/_/id/48572979/2026-fifa-world-cup-injuries-tracker-which-stars-miss-latest-info"},
+        {"player": "Declan Rice", "issue": "is a fitness doubt after being rested", "source": "Yahoo Sports", "url": "https://sports.yahoo.com/articles/world-cup-injury-tracker-neymar-093810239.html"}
+      ],
+      "Netherlands": [
+        {"player": "Jurrien Timber", "issue": "is out injured", "source": "ESPN", "url": "https://www.espn.com/soccer/story/_/id/48572979/2026-fifa-world-cup-injuries-tracker-which-stars-miss-latest-info"}
+      ]
+    }
+  }
+}

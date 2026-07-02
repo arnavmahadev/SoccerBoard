@@ -35,7 +35,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from forecaster.data import Match
+from forecaster.data import Match, normalize_team
 from forecaster.formats.base import MatchSampler
 
 
@@ -184,6 +184,19 @@ class WorldCupFormat:
                 "winner": winner,
                 "home": m.home, "away": m.away,
                 "home_goals": m.home_goals, "away_goals": m.away_goals,
+            }
+        for r in config.get("knockout", {}).get("result_overrides", []):
+            home, away = normalize_team(r["home"]), normalize_team(r["away"])
+            pair = frozenset((home, away))
+            if r.get("penalty"):
+                winner = r["winner"]
+            else:
+                winner = home if r["home_goals"] > r["away_goals"] else away
+            out[pair] = {
+                "winner": winner,
+                "home": home, "away": away,
+                "home_goals": r["home_goals"], "away_goals": r["away_goals"],
+                **({"penalty": True} if r.get("penalty") else {}),
             }
         return out
 

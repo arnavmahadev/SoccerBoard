@@ -16,8 +16,10 @@ forecast) is static and committed.
 from __future__ import annotations
 
 import json
+import math
 import threading
 import time
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -33,8 +35,11 @@ from forecaster.data import (
 from forecaster.dixon_coles import Params
 from forecaster.formats.base import MatchSampler, monte_carlo
 from forecaster.formats.world_cup import WorldCupFormat
+from forecaster.player_model import PlayerDeltas
 
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
+NEWS_ITEMS_PATH = Path(__file__).resolve().parent / "news_items.json"
+DEFAULT_COMPETITION = "world_cup_2026"
 SIM_TTL_SECONDS = 120.0  # re-simulate at most this often per as-of date
 LIVE_TTL = 120.0         # re-fetch the results feed at most this often
 
@@ -43,12 +48,23 @@ _params: Params | None = None
 _sampler: MatchSampler | None = None
 _metrics: dict | None = None
 _group_forecast: dict | None = None
+_news: dict | None = None             # raw news_items.json content
+_player_deltas: PlayerDeltas | None = None
+_adj_params: dict[str, Params] = {}   # competition -> player-adjusted params
+_adj_sampler: dict[str, MatchSampler] = {}
 _sim_cache: dict[tuple, tuple[float, dict]] = {}
+
+_reality_lock = threading.Lock()
+_reality_params: Params | None = None
+_reality_sampler: MatchSampler | None = None
+_reality_cache_time: float = 0.0
+_REALITY_TTL = 3600.0        # re-fit reality DC at most once per hour
+_REALITY_FIT_SINCE = "2010-01-01"
 
 
 def load():
     """Warm the cache / fail fast if artifacts are missing."""
-    global _params, _sampler, _metrics, _group_forecast
+    global _params, _sampler, _metrics, _group_forecast, _news, _player_deltas
     if _params is not None:
         return
     with _lock:
@@ -65,6 +81,117 @@ def load():
         _metrics = json.loads(mp.read_text()) if mp.exists() else {}
         gp = ARTIFACTS / "group_forecast.json"
         _group_forecast = json.loads(gp.read_text()) if gp.exists() else {}
+        _news = (
+            json.loads(NEWS_ITEMS_PATH.read_text()) if NEWS_ITEMS_PATH.exists() else {}
+        )
+        dp = ARTIFACTS / "player_deltas.json"
+        _player_deltas = PlayerDeltas.from_json(dp) if dp.exists() else None
+
+
+# --- Player-delta news overlay -----------------------------------------------
+# Absent players (injuries / suspensions) listed in news_items.json are looked
+# up in the fitted PlayerDeltas artifact. Their learned attack and defense
+# contributions are subtracted from their team's effective params. No rubric
+# tiers — magnitudes come from what the model learnt across international
+# tournaments (StatsBomb data). Players not covered by that data get delta≈0,
+# meaning no adjustment, which is the correct regularisation default.
+
+def _absent_players(competition: str) -> dict[str, list[str]]:
+    """team -> list of absent player names from news_items.json."""
+    comp = (_news or {}).get(competition) or {}
+    teams = comp.get("teams") or {}
+    return {team: [it["player"] for it in items] for team, items in teams.items() if items}
+
+
+def _params_for(competition: str) -> Params:
+    """Base params with absent players' learned deltas subtracted."""
+    load()
+    absent = _absent_players(competition)
+    if not absent or _player_deltas is None:
+        return _params
+    if competition not in _adj_params:
+        attack = list(_params.attack)
+        defense = list(_params.defense)
+        tidx = _params.index()
+        for team, players in absent.items():
+            if team not in tidx:
+                continue
+            ti = tidx[team]
+            for player in players:
+                pi = _player_deltas.find_player(player)
+                if pi is None:
+                    continue  # player not in training data → no adjustment
+                # Only apply when the player's delta is positive (they genuinely
+                # help the team). A negative delta likely reflects sparse data or
+                # lineup correlation artifacts, not that the player hurts the team;
+                # we cap at 0 so an injury can never make a team look stronger.
+                attack[ti]  -= max(_player_deltas.att_delta[pi], 0.0)
+                defense[ti] -= max(_player_deltas.def_delta[pi], 0.0)
+        _adj_params[competition] = replace(_params, attack=attack, defense=defense)
+    return _adj_params[competition]
+
+
+def _sampler_for(competition: str) -> MatchSampler:
+    p = _params_for(competition)
+    if p is _params:
+        return _sampler
+    if competition not in _adj_sampler:
+        _adj_sampler[competition] = MatchSampler(p)
+    return _adj_sampler[competition]
+
+
+def adjustments(competition: str = DEFAULT_COMPETITION) -> dict:
+    """Active injury/suspension news for a competition, with learned delta magnitudes."""
+    load()
+    comp = (_news or {}).get(competition) or {}
+    teams_news = comp.get("teams") or {}
+    tidx = _params.index()
+
+    rows = []
+    for team, items in teams_news.items():
+        if team not in tidx or not items:
+            continue
+        enriched = []
+        for it in items:
+            pname = it["player"]
+            pi = _player_deltas.find_player(pname) if _player_deltas else None
+            att_d = float(max(_player_deltas.att_delta[pi], 0.0)) if pi is not None and _player_deltas else 0.0
+            def_d = float(max(_player_deltas.def_delta[pi], 0.0)) if pi is not None and _player_deltas else 0.0
+            enriched.append({
+                "player": pname,
+                "issue": it.get("issue", ""),
+                "att_delta": round(att_d, 4),
+                "def_delta": round(def_d, 4),
+                "covered": pi is not None,
+            })
+        seen_sources: dict[str, str] = {}
+        for it in items:
+            if it.get("source") and it["source"] not in seen_sources:
+                seen_sources[it["source"]] = it.get("url", "")
+        rows.append({
+            "team": team,
+            "items": enriched,
+            "sources": [{"label": s, "url": u} for s, u in seen_sources.items()],
+        })
+    rows.sort(key=lambda r: r["team"])
+    return {"competition": competition, "updated": comp.get("updated"), "teams": rows}
+
+
+def _get_reality_params(as_of: str) -> tuple[Params, MatchSampler]:
+    """Re-fit DC on all available matches up to as_of (including tournament games)."""
+    global _reality_params, _reality_sampler, _reality_cache_time
+    with _reality_lock:
+        if _reality_params is not None and (time.time() - _reality_cache_time) < _REALITY_TTL:
+            return _reality_params, _reality_sampler
+        all_matches = load_matches(
+            as_of=as_of, since=_REALITY_FIT_SINCE,
+            prefer_live=True, ttl_seconds=LIVE_TTL,
+        )
+        p = dc.fit(all_matches, xi=0.25, reg=0.02, ref_date=as_of)
+        _reality_params = p
+        _reality_sampler = MatchSampler(p)
+        _reality_cache_time = time.time()
+    return _reality_params, _reality_sampler
 
 
 def _today() -> str:
@@ -82,11 +209,15 @@ def teams(competition: str) -> list[str]:
 
 
 # --- Match predictor ---------------------------------------------------------
-def predict_match(home: str, away: str, neutral: bool = True, display: int = 6) -> dict:
+def predict_match(
+    home: str, away: str, neutral: bool = True, display: int = 6,
+    competition: str = DEFAULT_COMPETITION,
+) -> dict:
     load()
-    mat = dc.predict(_params, home, away, neutral)
+    params = _params_for(competition)  # base ratings + any news overlay
+    mat = dc.predict(params, home, away, neutral)
     ph, pd, pa = dc.outcome_probs(mat)
-    lam, mu = dc.goal_expectations(_params, home, away, neutral)
+    lam, mu = dc.goal_expectations(params, home, away, neutral)
     i, j = dc.most_likely_score(mat)
     return {
         "home": home,
@@ -105,25 +236,45 @@ def predict_match(home: str, away: str, neutral: bool = True, display: int = 6) 
 
 
 # --- Live competition simulation ---------------------------------------------
-def simulation(competition: str, as_of: str | None = None, n: int = 10000) -> dict:
-    """Live per-team stage probabilities. Re-derives settled knockout games from
-    the latest results (<= as_of) and re-simulates the remainder."""
+def simulation(
+    competition: str, as_of: str | None = None, n: int = 10000, mode: str = "live",
+) -> dict:
+    """Per-team stage probabilities.
+
+    mode='live'         pre-tournament DC params + news overlay + real bracket.
+    mode='pretournament' pre-tournament DC params, no overlay, no settled games
+                        (simulates all R32 ties from scratch).
+    mode='reality'      DC re-fitted with all tournament results to date + real
+                        bracket (expensive; cached 1 h).
+    """
     load()
     cfg = get_competition(competition)
     as_of = as_of or _today()
-    key = (competition, as_of, n)
+
+    cache_as_of = "__pretournament__" if mode == "pretournament" else as_of
+    key = (competition, cache_as_of, n, mode)
+    sim_ttl = _REALITY_TTL if mode in ("pretournament", "reality") else SIM_TTL_SECONDS
 
     cached = _sim_cache.get(key)
-    if cached and (time.time() - cached[0]) < SIM_TTL_SECONDS:
+    if cached and (time.time() - cached[0]) < sim_ttl:
         return cached[1]
 
-    matches = tournament_matches(
-        cfg["tournament_label"], cfg["season_year"], as_of=as_of,
-        prefer_live=True, ttl_seconds=LIVE_TTL,
-    )
-    fixed = WorldCupFormat.fixed_knockout(cfg, matches)
-    fmt = WorldCupFormat(cfg, fixed_results=fixed)
-    raw = monte_carlo(fmt, _sampler, n=n, seed=12345)
+    if mode == "pretournament":
+        fmt = WorldCupFormat(cfg)
+        raw = monte_carlo(fmt, _sampler, n=n, seed=12345)
+        fixed = {}
+    else:
+        matches = tournament_matches(
+            cfg["tournament_label"], cfg["season_year"], as_of=as_of,
+            prefer_live=True, ttl_seconds=LIVE_TTL,
+        )
+        fixed = WorldCupFormat.fixed_knockout(cfg, matches)
+        fmt = WorldCupFormat(cfg, fixed_results=fixed)
+        if mode == "reality":
+            _, r_sampler = _get_reality_params(as_of)
+            raw = monte_carlo(fmt, r_sampler, n=n, seed=12345)
+        else:
+            raw = monte_carlo(fmt, _sampler_for(competition), n=n, seed=12345)
 
     rows = []
     group_of = {t: g for g, members in cfg["groups"].items() for t in members}
@@ -138,6 +289,7 @@ def simulation(competition: str, as_of: str | None = None, n: int = 10000) -> di
         "competition": competition,
         "name": cfg["name"],
         "as_of": as_of,
+        "mode": mode,
         "n": n,
         "stages": raw["stages"],
         "teams": rows,
@@ -157,9 +309,9 @@ _ROUND_LABELS = {
 }
 
 
-def _advance_prob(home: str, away: str) -> float:
+def _advance_prob(home: str, away: str, competition: str = DEFAULT_COMPETITION) -> float:
     """P(home advances) in a neutral knockout tie (normal time or shootout)."""
-    mat = dc.predict(_params, home, away, neutral=True)
+    mat = dc.predict(_params_for(competition), home, away, neutral=True)
     ph, pdraw, pa = dc.outcome_probs(mat)
     denom = ph + pa
     share = ph / denom if denom > 1e-12 else 0.5
@@ -169,10 +321,13 @@ def _advance_prob(home: str, away: str) -> float:
 _BRACKET_ROUNDS = ["round_of_32", "round_of_16", "quarterfinal", "semifinal", "final"]
 
 
-def _bracket_view(cfg: dict, played: dict, mode: str) -> dict:
-    """Build one bracket. mode='prediction' advances the model's favourite for
-    every game (ignoring results); mode='actual' advances the real winners and
-    leaves undecided ties as TBD, flagging whether each result matched the pick."""
+def _bracket_view(
+    cfg: dict, played: dict, mode: str, competition: str = DEFAULT_COMPETITION,
+) -> dict:
+    """Build one bracket. mode='prediction' advances each tie's most likely winner
+    (head-to-head); mode='actual' advances the real winners and leaves undecided
+    ties as TBD, flagging whether each result matched the pick. Both use the same
+    head-to-head favourite, so the two views never disagree about a pick."""
     ko = cfg["knockout"]
     r32 = {f["match"]: tuple(f["teams"]) for f in ko["round_of_32"]}
     tree = {int(k): v for k, v in ko["tree"].items()}
@@ -189,7 +344,11 @@ def _bracket_view(cfg: dict, played: dict, mode: str) -> dict:
             a, b = winners.get(tree[m][0]), winners.get(tree[m][1])
         entry = {"match": m, "a": a, "b": b}
         if mode == "prediction":
-            pa = _advance_prob(a, b)
+            # The model's single most likely winner of this tie (head-to-head, in
+            # a neutral knockout), advanced round by round. This is the same rule
+            # the "actual" view grades results against, so the Prediction and
+            # Results views can never disagree about who was picked.
+            pa = _advance_prob(a, b, competition)
             winner = a if pa >= 0.5 else b
             entry.update(prob_a=pa, prob_b=1.0 - pa, winner=winner, settled=False)
         else:
@@ -200,7 +359,7 @@ def _bracket_view(cfg: dict, played: dict, mode: str) -> dict:
                     [rec["home_goals"], rec["away_goals"]]
                     if rec["home"] == a else [rec["away_goals"], rec["home_goals"]]
                 )
-                pa = _advance_prob(a, b)
+                pa = _advance_prob(a, b, competition)
                 pred = a if pa >= 0.5 else b
                 hit = winner == pred
                 decided += 1
@@ -226,7 +385,11 @@ def _bracket_view(cfg: dict, played: dict, mode: str) -> dict:
 
 def bracket(competition: str, as_of: str | None = None) -> dict:
     """Two brackets for side-by-side comparison: the model's predictions for every
-    knockout game, and the actual results as they come in (with hit/miss flags)."""
+    knockout game, and the actual results as they come in (with hit/miss flags).
+
+    Both brackets pick each tie's head-to-head favourite (news overlay included),
+    so the per-game numbers are real single-game win chances and the Prediction and
+    Results views always agree on who was picked."""
     load()
     cfg = get_competition(competition)
     as_of = as_of or _today()
@@ -240,8 +403,8 @@ def bracket(competition: str, as_of: str | None = None) -> dict:
         "name": cfg["name"],
         "as_of": as_of,
         "settled_count": len(played),
-        "prediction": _bracket_view(cfg, {}, "prediction"),
-        "actual": _bracket_view(cfg, played, "actual"),
+        "prediction": _bracket_view(cfg, {}, "prediction", competition=competition),
+        "actual": _bracket_view(cfg, played, "actual", competition=competition),
     }
 
 
@@ -330,7 +493,7 @@ def group_matches(competition: str, as_of: str | None = None) -> dict:
 
     out = []
     for fx in cfg["group_fixtures"]:
-        pred = predict_match(fx["home"], fx["away"], neutral=fx["neutral"])
+        pred = predict_match(fx["home"], fx["away"], neutral=fx["neutral"], competition=competition)
         am = actual_by_pair.get(frozenset((fx["home"], fx["away"])))
         actual = None
         if am is not None:

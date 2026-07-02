@@ -93,7 +93,16 @@ def forecaster_teams(competition: str = "world_cup_2026") -> dict:
 @app.post("/forecaster/match")
 def forecaster_match(req: ForecastMatchRequest) -> dict:
     """Goal matrix + W/D/L + expected scoreline for any two teams."""
-    return forecaster.predict_match(req.home, req.away, neutral=req.neutral)
+    return forecaster.predict_match(
+        req.home, req.away, neutral=req.neutral, competition=req.competition
+    )
+
+
+@app.get("/forecaster/adjustments")
+def forecaster_adjustments(competition: str = "world_cup_2026") -> dict:
+    """The manual news overlay (injury/suspension rating tweaks) active on top of
+    the base model, with reasons and sources so the UI can flag adjusted teams."""
+    return forecaster.adjustments(competition)
 
 
 @app.get("/forecaster/simulation")
@@ -101,11 +110,13 @@ def forecaster_simulation(
     competition: str = "world_cup_2026",
     as_of: str | None = None,
     n: int = Query(10000, ge=1000, le=50000),
+    mode: str = "live",
 ) -> dict:
-    """Live per-team stage probabilities (advancement / title), re-derived from
-    the latest results up to `as_of` and re-simulated."""
+    """Per-team stage probabilities.
+
+    mode: 'live' (default), 'pretournament', or 'reality'."""
     try:
-        return forecaster.simulation(competition, as_of=as_of, n=n)
+        return forecaster.simulation(competition, as_of=as_of, n=n, mode=mode)
     except KeyError:
         raise HTTPException(404, f"Unknown competition: {competition}")
 
@@ -114,8 +125,9 @@ def forecaster_simulation(
 def forecaster_bracket(
     competition: str = "world_cup_2026", as_of: str | None = None
 ) -> dict:
-    """Predicted knockout bracket — each tie's most-likely winner advanced to a
-    predicted champion; settled games use the real result."""
+    """Predicted knockout bracket — each tie advances the side likelier to win the
+    tournament, so the predicted champion equals the title-odds leader; the actual
+    view uses real results."""
     try:
         return forecaster.bracket(competition, as_of=as_of)
     except KeyError:
@@ -151,5 +163,6 @@ def forecaster_metrics(competition: str = "world_cup_2026") -> dict:
 
 
 # Serve the interactive frontend at "/" (mounted last so the API routes above
-# and the auto docs take precedence). html=True serves index.html at the root.
+# and the auto docs take precedence). html=True serves index.html (the
+# Forecaster landing page) at the root; the xG board lives at /xg.html.
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

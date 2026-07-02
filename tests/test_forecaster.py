@@ -161,3 +161,96 @@ def test_api_simulation_and_metrics(client):
     assert len(sim["teams"]) == 32
     mt = client.get("/forecaster/metrics").json()
     assert mt["model"]["log_loss"] < mt["baseline"]["log_loss"]  # beats the baseline
+
+
+def test_player_model_normalize_and_roundtrip(tmp_path):
+    """normalize_player_name strips accents for fuzzy lookup, and PlayerDeltas
+    round-trips through JSON without data loss."""
+    from forecaster.player_model import PlayerDeltas, normalize_player_name
+
+    assert normalize_player_name("Kylian Mbappé") == "kylian mbappe"
+    assert normalize_player_name("Nico Williams") == "nico williams"
+    assert normalize_player_name("Pedri") == "pedri"
+
+    deltas = PlayerDeltas(
+        players=["Kylian Mbappé", "Pedri"],
+        att_delta=[0.15, 0.08],
+        def_delta=[0.02, 0.04],
+        n_matches=[22, 18],
+        reg=1.0,
+        n_lineup_matches=120,
+    )
+    path = tmp_path / "player_deltas.json"
+    deltas.to_json(path)
+    loaded = PlayerDeltas.from_json(path)
+    assert loaded.players == deltas.players
+    assert loaded.att_delta == pytest.approx(deltas.att_delta)
+    assert loaded.def_delta == pytest.approx(deltas.def_delta)
+    # Accent-stripped lookup finds the accented name
+    assert normalize_player_name("Kylian Mbappé") in loaded.normalized_index()
+
+
+def test_api_adjustments_overlay(client):
+    """The adjustments endpoint surfaces per-player news items for every team
+    listed in news_items.json, with att_delta / def_delta / covered fields."""
+    adj = client.get("/forecaster/adjustments").json()
+    by_team = {t["team"]: t for t in adj["teams"]}
+    assert len(by_team) >= 2, "overlay should cover multiple teams' news"
+    for t in adj["teams"]:
+        assert t["items"] and all(
+            it["player"] and it["issue"] and "att_delta" in it and "covered" in it
+            for it in t["items"]
+        )
+
+
+def test_player_delta_lowers_scoring():
+    """When a player with a positive att_delta is absent, their team's expected
+    goals drop by the learned amount. Tests the serving-path mechanism directly
+    by injecting a synthetic PlayerDeltas object."""
+    from forecaster import predictor as fc
+    from forecaster.player_model import PlayerDeltas
+
+    fc.load()
+    synthetic = PlayerDeltas(
+        players=["Nico Williams"],
+        att_delta=[0.20],
+        def_delta=[0.00],
+        n_matches=[20],
+        reg=1.0,
+        n_lineup_matches=300,
+    )
+    old_deltas = fc._player_deltas
+    old_adj = dict(fc._adj_params)
+    fc._player_deltas = synthetic
+    fc._adj_params.clear()
+
+    try:
+        base = fc.predict_match("Spain", "Morocco", competition="__no_overlay__")
+        adj = fc.predict_match("Spain", "Morocco", competition="world_cup_2026")
+        assert adj["exp_home"] < base["exp_home"]   # Nico out -> Spain scores less
+        assert adj["exp_away"] == pytest.approx(base["exp_away"])  # opponent unchanged
+    finally:
+        fc._player_deltas = old_deltas
+        fc._adj_params.clear()
+        fc._adj_params.update(old_adj)
+
+
+def test_bracket_views_never_contradict(client):
+    """Prediction and Results grade a tie by the same head-to-head favourite, so a
+    settled Round-of-32 game can't show as correct in one view and wrong in the
+    other (the Mexico bug), and the advancing side is always the one shown at the
+    higher probability."""
+    bk = client.get("/forecaster/bracket").json()
+    pred_r32 = {m["match"]: m["winner"]
+                for rnd in bk["prediction"]["rounds"] if rnd["round"] == "round_of_32"
+                for m in rnd["matches"]}
+    for rnd in bk["actual"]["rounds"]:
+        if rnd["round"] != "round_of_32":
+            continue
+        for m in rnd["matches"]:
+            if m.get("settled"):
+                assert m["predicted_winner"] == pred_r32[m["match"]]
+    for rnd in bk["prediction"]["rounds"]:
+        for m in rnd["matches"]:
+            wp = m["prob_a"] if m["winner"] == m["a"] else m["prob_b"]
+            assert wp >= 0.5 - 1e-9
