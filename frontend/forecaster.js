@@ -156,11 +156,10 @@
     const el = $("adjust-note");
     if (!el) return;
     el.innerHTML = rows.length
-      ? `These odds account for the latest injury news. Teams tagged ` +
-        `<span class="news-chip down static">news ▾</span> have a player or two out — I've ` +
-        `looked up each player's learned attack/defence contribution from StatsBomb lineup data ` +
-        `and subtracted it from their team's effective strength. Tap a tag to see who's out and ` +
-        `by how much.`
+      ? `These odds factor in the latest injury news. Teams with a ` +
+        `<span class="news-chip down static">news ▾</span> tag have someone out. Each missing ` +
+        `player's historical contribution is looked up from StatsBomb lineup data and subtracted ` +
+        `from that team's rating. Tap a tag to see who's out and by how much.`
       : "";
   }
 
@@ -355,25 +354,25 @@
     const m = mt.model, c = mt.config;
     $("acc-text").innerHTML = `
       <p>The model doesn't just pick winners. It puts a <b>probability</b> on every
-      result, and what matters is whether those probabilities are accurate. Across
-      <b>${c.n_test.toLocaleString()}</b> real matches it had never seen, they were
-      <b>well-calibrated</b>: when it said 70%, that happened about 70% of the time.</p>
-      <p class="acc-foot">Outright-winner accuracy is a weak measure of a probabilistic
-      model. In a knockout there are no draws, so a coin flip alone is correct about
-      50% of the time. The relevant measure is the chart above: predicted probability
-      versus how often the result occurred, tracking the dashed line. The calibration
-      error is <b>${m.ece.toFixed(3)}</b> (0 is perfect), and it scores <b>${m.log_loss.toFixed(2)}</b>
-      on log-loss versus ${mt.baseline.log_loss.toFixed(2)} for a naive baseline, where
-      lower is better.</p>`;
+      result, and what matters is whether those probabilities are trustworthy. Across
+      <b>${c.n_test.toLocaleString()}</b> real matches it had never seen before, it held
+      up well: when it said 70%, the favourite won about 70% of the time.</p>
+      <p class="acc-foot">Raw win/loss accuracy is a poor way to judge a model like this.
+      In a knockout, there are no draws, so just guessing randomly gets you to 50% for free.
+      The chart above is more useful: it plots predicted probability against how often that
+      result actually happened. The closer to the dashed line, the better. The calibration
+      error is <b>${m.ece.toFixed(3)}</b> (0 is perfect), and log-loss is
+      <b>${m.log_loss.toFixed(2)}</b> versus ${mt.baseline.log_loss.toFixed(2)} for a naive
+      baseline (lower is better).</p>`;
     $("fc-foot").textContent =
-      `The scoreline model is a Dixon-Coles fit (bivariate Poisson) on about 49k international ` +
-      `results, and the title odds come from 10,000 Monte Carlo simulations. Team strength is ` +
-      `frozen before the tournament, so results only decide who advances, not how good a team is. ` +
-      `Injuries and suspensions are handled via a second-stage player model: per-player ` +
-      `attack/defence contributions fitted on StatsBomb lineup data (WC 2018 & 2022, Euros, Copa ` +
-      `América, AFCON). When a player is listed as absent, their learned delta is subtracted from ` +
-      `their team's effective strength — tagged under the title odds. Live results come from a ` +
-      `public community dataset, so they can lag the real world by a few hours.`;
+      `The scoreline model is a Dixon-Coles fit (bivariate Poisson) trained on about 49,000 ` +
+      `international results. Title odds come from 10,000 Monte Carlo simulations. Team strength ` +
+      `is set before the tournament starts, so results only decide who advances, not how a team ` +
+      `is rated. For injuries and suspensions, a second model trained on StatsBomb lineup data ` +
+      `from WC 2018 and 2022, the Euros, Copa América, and AFCON estimates each player's ` +
+      `contribution to their team's attack and defence. When a player is listed as out, that ` +
+      `contribution gets subtracted from their team's rating and flagged under the title odds. ` +
+      `Live results come from a public community dataset, so they can sometimes be a few hours behind.`;
   }
 
   function renderCalib(bins) {

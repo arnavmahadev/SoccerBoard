@@ -13,10 +13,11 @@
     <header class="masthead">
       <div>
         <h1 id="comp-title">World Cup 2026 Forecast</h1>
-        <p>Every number starts from a statistical model I built: team strength
-           ratings plus 10,000 Monte Carlo simulations, re-running as games are
-           played. On top of that I add a small layer by hand for injury and squad
-           news, and I flag those teams so you can see exactly what I changed and why.</p>
+        <p>A statistical model rates each team's strength and runs 10,000 tournament
+           simulations to figure out who's most likely to win. It updates as games
+           are played. Injury and squad news is checked by hand and the numbers are
+           adjusted when something significant comes up. Adjusted teams are flagged
+           so you can see exactly what changed and why.</p>
       </div>
       <div class="masthead-actions">
         <nav class="page-nav">
@@ -47,7 +48,7 @@
       <!-- ===================== HEAD TO HEAD ===================== -->
       <section class="block">
         <h2>Head-to-head</h2>
-        <p class="lead">Pick any two teams to see who the model favours.</p>
+        <p class="lead">Pick any two teams and see who the model thinks wins, plus the most likely scoreline.</p>
         <div class="h2h">
           <div class="h2h-pick">
             <select id="h-home" class="fc-select"></select>
@@ -85,17 +86,18 @@
     <!-- ===================== GROUPS ===================== -->
     <section class="block">
       <h2>Group stage</h2>
-      <p class="lead"><b>Pred.</b> is the chance the model gave each team to reach
-        the knockouts, set before the tournament started. <b>Res.</b> is the
-        outcome (✓ through, ✗ out).</p>
+      <p class="lead"><b>Pred.</b> is the model's pre-tournament estimate of each
+        team's chances of making it out of the group stage. <b>Res.</b> shows what
+        actually happened: ✓ means they advanced, ✗ means they went out.</p>
       <div id="groups" class="groups"></div>
     </section>
 
     <!-- ===================== ACCURACY ===================== -->
     <section class="block">
       <h2>Accuracy</h2>
-      <p class="lead">Backtested on 2,546 international matches the model never saw
-        during training. The question is whether its probabilities are accurate.</p>
+      <p class="lead">Backtested on 2,546 international matches the model had never
+        seen during training. What matters is not just whether it picks the right
+        winner, but whether its probabilities are actually accurate.</p>
       <div class="acc">
         <div id="acc-chart" class="acc-chart"></div>
         <div class="acc-text" id="acc-text"></div>

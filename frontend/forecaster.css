@@ -23,18 +23,18 @@
 .fc-tab.active { color: var(--text); background: var(--bg); border-color: var(--border); }
 .fc-tab:hover:not(.active) { color: var(--text); }
 
-.asof { margin: -8px 0 26px; color: var(--text-muted); font-size: 0.82rem; }
+.asof { margin: 0 0 26px; color: var(--text-muted); font-size: 0.82rem; }
 
 /* country flag chips, used next to team names everywhere */
 .flag {
-  height: 12px; width: auto; border-radius: 2px; margin-right: 7px;
+  height: 12px; width: 18px; object-fit: cover; border-radius: 2px; margin-right: 7px;
   vertical-align: -1px; flex: none; box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 /* --- section blocks ---------------------------------------------------- */
 .block { margin: 30px 0; }
 .block > h2 { margin: 0; font-size: 1.22rem; font-weight: 740; letter-spacing: -0.01em; }
-.lead { margin: 5px 0 16px; color: var(--text-muted); font-size: 0.88rem; max-width: 72ch; }
+.lead { margin: 5px 0 16px; color: var(--text-muted); font-size: 0.88rem; }
 
 /* --- title odds (compact) --------------------------------------------- */
 .odds { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 18px; max-width: 540px; }
@@ -222,7 +222,7 @@
 .acc-bar .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
 .acc-foot { color: var(--text-muted); font-size: 0.8rem; margin-top: 12px; }
 
-.fc-foot { color: var(--text-muted); font-size: 0.76rem; line-height: 1.5; margin-top: 26px; max-width: 80ch; }
+.fc-foot { color: var(--text-muted); font-size: 0.76rem; line-height: 1.5; margin-top: 26px; }
 
 @media (max-width: 760px) {
   .acc { grid-template-columns: 1fr; }
