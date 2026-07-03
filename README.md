@@ -1,123 +1,25 @@
 # SoccerBoard
 
-> Predict the probability a shot becomes a goal — from **player positions alone** —
-> and explore it by dragging players around a live 2D pitch.
+> Three tools, one backend: a **World Cup forecaster** that predicts the 2026
+> tournament, an **Expected Goals** engine that scores any shot from player
+> positions alone, and a **Tactics Board** for sketching formations and plays.
 
 **▶ Live demo: https://arnavmahadev-soccerboard.hf.space**
 
 ![demo](reports/demo.png)
 
-Expected goals (**xG**) is the standard way to measure shot quality in football:
-the chance a given shot is scored. This project trains an xG model on
-**StatsBomb 360 freeze frames** — the position of every visible player at the
-instant of the shot — and serves it as an interactive web app. There are no
-proprietary event features: just where the players are.
+SoccerBoard started as a single xG model and grew into a small suite that
+shares one FastAPI backend, one frontend shell, and one deployed container.
+Open the [live demo](https://arnavmahadev-soccerboard.hf.space): the
+**Forecaster** is the landing page, with **Expected Goals** and
+**Tactics Board** a click away in the same nav bar.
 
-The whole thing is one repo, end to end:
+## Forecaster — competition prediction
 
-```
-StatsBomb 360  →  GameState  →  9 geometric features  →  model  →  FastAPI  →  draggable pitch UI
-  (data)          (schema)       (train = serve)         (XGBoost)   (/predict)    (vanilla JS)
-```
-
-## Try it
-
-Open the [live demo](https://arnavmahadev-soccerboard.hf.space) and:
-
-- **Drag the ball** closer to goal or out to the wing — watch xG rise and fall
-  with distance and angle.
-- **Move defenders** into the shooting lane, or pull them away, to see how a
-  crowded box kills a chance.
-- **Drag the keeper** off his line to open up the net.
-
-The number updates on every move because the SVG pitch coordinates *are* the
-model's coordinates — the marker positions get sent straight to `/predict`.
-
-## Why it's interesting
-
-- **End-to-end ML system** in one repo: data ingestion → feature engineering →
-  model comparison → calibration analysis → REST API → interactive UI →
-  deployed container.
-- **Positions-only model** (XGBoost) reaches **0.263 test log loss**, within
-  ~0.02 of StatsBomb's professional xG (**0.244**) on the same shots — using only
-  player coordinates, none of the proprietary event features the benchmark has.
-- **Well calibrated** (ECE **0.027**): a predicted 0.3 really does convert ~30%
-  of the time, which is the whole point of xG.
-- **One locked input schema** flows through every layer, so a future
-  video→2D-tracking pipeline could plug in with no rework.
-
-## How it works
-
-![how it works](reports/how-it-works.png)
-
-The hub is [`GameState`](src/xg/data/schema.py): `shot_xy` plus a list of players
-(each with `xy`, `team`, `is_gk`). The same object is the model input, the API
-request body, and what the frontend builds from marker positions — one
-definition, validated at runtime, used everywhere. The SVG `viewBox` is set to
-pitch units, so a dragged marker's position *is* a model coordinate (no scaling
-math).
-
-### The features
-
-A `GameState` is reduced to **9 geometric features** — the single
-train-and-serve source in [`features/build.py`](src/xg/features/build.py):
-
-| feature | meaning |
-|---|---|
-| `distance` | shot distance to goal centre |
-| `angle` | width of goal mouth subtended at the shooter |
-| `abs_y_offset` | how far off-centre the shot is |
-| `n_defenders` | defenders visible in the freeze frame |
-| `defenders_in_cone` | defenders inside the shooter→posts triangle |
-| `nearest_def_dist` | distance to the closest outfield defender |
-| `gk_visible` | whether a defending keeper is in view |
-| `gk_dist_to_goal` | how far the keeper is off his line |
-| `gk_dist_to_shot` | keeper's distance from the shooter |
-
-XGBoost is trained with **monotone constraints** on these (e.g. further out →
-never higher xG; more open net → never lower), so the model can't learn
-physically nonsensical wiggles from a small dataset.
-
-### Coordinate system (StatsBomb convention)
-
-- Pitch is **120 (length) × 80 (width)**; the attack shoots toward **x = 120**.
-- Goal mouth spans **y = 36 .. 44**, centred at **y = 40**.
-
-## Models & results
-
-Held-out test set: **540 open-play shots, split by match** (no leakage between
-train and test). StatsBomb's own xG is the professional benchmark on the
-identical shots.
-
-| model | log loss | Brier | ECE | notes |
-|---|---|---|---|---|
-| Logistic regression | 0.270 | 0.076 | — | interpretable floor |
-| **XGBoost** (served) | **0.263** | **0.071** | **0.027** | best; trees win on small tabular data |
-| MLP (PyTorch) | 0.274 | 0.076 | — | behind XGBoost, as expected at this data size |
-| DeepSets (PyTorch) | 0.287 | 0.080 | — | over raw player sets; robust (see below) |
-| StatsBomb (benchmark) | 0.244 | 0.068 | 0.019 | uses event features this model doesn't have |
-
-![calibration](reports/calibration.png)
-
-**A concrete robustness case.** A contrived wide-open chance (no nearby
-defenders) breaks the plain MLP — it predicts **0.00**, because the
-`nearest_def_dist` feature hits an out-of-distribution sentinel that saturates
-the network. XGBoost handles it (**0.66**) by extrapolating flat, and the
-**DeepSets** model handles it too (**0.48**) — by consuming the raw player set,
-"no defender" is simply a smaller set with nothing to saturate on. Tree
-robustness and set-based design, shown on one reproducible example.
-
-Penalties are special-cased to the canonical **0.76** at serve time (an
-out-of-band `shot_type` hint), which keeps the `GameState` contract
-positions-only. Full numbers in [reports/evaluation.md](reports/evaluation.md).
-
-## Forecaster — competition prediction (second mode)
-
-SoccerBoard has a second mode: a **competition forecaster** that predicts the
-**2026 World Cup**. It shares the data layer, FastAPI backend, frontend shell and
-deployment with the xG engine, but demonstrates a different ML toolkit —
+SoccerBoard's **competition forecaster** predicts the **2026 World Cup**,
+demonstrating a different ML toolkit than the xG engine —
 **probabilistic scoreline modeling, Monte Carlo tournament simulation, and
-forecast calibration/backtesting.** (Open the live demo → **Forecaster** tab.)
+forecast calibration/backtesting.**
 
 ### What it does
 
@@ -225,13 +127,136 @@ Committed artifacts (params, competition config, group forecast, metrics, result
 snapshot) make startup fast and offline, exactly like the xG model. The live
 knockout simulation is recomputed per request, not committed.
 
+## Expected Goals — shot quality
+
+Expected goals (**xG**) is the standard way to measure shot quality in football:
+the chance a given shot is scored. This project trains an xG model on
+**StatsBomb 360 freeze frames** — the position of every visible player at the
+instant of the shot — and serves it as an interactive web app. There are no
+proprietary event features: just where the players are.
+
+The whole thing is one pipeline, end to end:
+
+```
+StatsBomb 360  →  GameState  →  9 geometric features  →  model  →  FastAPI  →  draggable pitch UI
+  (data)          (schema)       (train = serve)         (XGBoost)   (/predict)    (vanilla JS)
+```
+
+### Try it
+
+Open the live demo, switch to the **Expected Goals** tab, and:
+
+- **Drag the ball** closer to goal or out to the wing — watch xG rise and fall
+  with distance and angle.
+- **Move defenders** into the shooting lane, or pull them away, to see how a
+  crowded box kills a chance.
+- **Drag the keeper** off his line to open up the net.
+
+The number updates on every move because the SVG pitch coordinates *are* the
+model's coordinates — the marker positions get sent straight to `/predict`.
+
+### Why it's interesting
+
+- **End-to-end ML system** in one repo: data ingestion → feature engineering →
+  model comparison → calibration analysis → REST API → interactive UI →
+  deployed container.
+- **Positions-only model** (XGBoost) reaches **0.263 test log loss**, within
+  ~0.02 of StatsBomb's professional xG (**0.244**) on the same shots — using only
+  player coordinates, none of the proprietary event features the benchmark has.
+- **Well calibrated** (ECE **0.027**): a predicted 0.3 really does convert ~30%
+  of the time, which is the whole point of xG.
+- **One locked input schema** flows through every layer, so a future
+  video→2D-tracking pipeline could plug in with no rework.
+
+### How it works
+
+![how it works](reports/how-it-works.png)
+
+The hub is [`GameState`](src/xg/data/schema.py): `shot_xy` plus a list of players
+(each with `xy`, `team`, `is_gk`). The same object is the model input, the API
+request body, and what the frontend builds from marker positions — one
+definition, validated at runtime, used everywhere. The SVG `viewBox` is set to
+pitch units, so a dragged marker's position *is* a model coordinate (no scaling
+math).
+
+#### The features
+
+A `GameState` is reduced to **9 geometric features** — the single
+train-and-serve source in [`features/build.py`](src/xg/features/build.py):
+
+| feature | meaning |
+|---|---|
+| `distance` | shot distance to goal centre |
+| `angle` | width of goal mouth subtended at the shooter |
+| `abs_y_offset` | how far off-centre the shot is |
+| `n_defenders` | defenders visible in the freeze frame |
+| `defenders_in_cone` | defenders inside the shooter→posts triangle |
+| `nearest_def_dist` | distance to the closest outfield defender |
+| `gk_visible` | whether a defending keeper is in view |
+| `gk_dist_to_goal` | how far the keeper is off his line |
+| `gk_dist_to_shot` | keeper's distance from the shooter |
+
+XGBoost is trained with **monotone constraints** on these (e.g. further out →
+never higher xG; more open net → never lower), so the model can't learn
+physically nonsensical wiggles from a small dataset.
+
+#### Coordinate system (StatsBomb convention)
+
+- Pitch is **120 (length) × 80 (width)**; the attack shoots toward **x = 120**.
+- Goal mouth spans **y = 36 .. 44**, centred at **y = 40**.
+
+### Models & results
+
+Held-out test set: **540 open-play shots, split by match** (no leakage between
+train and test). StatsBomb's own xG is the professional benchmark on the
+identical shots.
+
+| model | log loss | Brier | ECE | notes |
+|---|---|---|---|---|
+| Logistic regression | 0.270 | 0.076 | — | interpretable floor |
+| **XGBoost** (served) | **0.263** | **0.071** | **0.027** | best; trees win on small tabular data |
+| MLP (PyTorch) | 0.274 | 0.076 | — | behind XGBoost, as expected at this data size |
+| DeepSets (PyTorch) | 0.287 | 0.080 | — | over raw player sets; robust (see below) |
+| StatsBomb (benchmark) | 0.244 | 0.068 | 0.019 | uses event features this model doesn't have |
+
+![calibration](reports/calibration.png)
+
+**A concrete robustness case.** A contrived wide-open chance (no nearby
+defenders) breaks the plain MLP — it predicts **0.00**, because the
+`nearest_def_dist` feature hits an out-of-distribution sentinel that saturates
+the network. XGBoost handles it (**0.66**) by extrapolating flat, and the
+**DeepSets** model handles it too (**0.48**) — by consuming the raw player set,
+"no defender" is simply a smaller set with nothing to saturate on. Tree
+robustness and set-based design, shown on one reproducible example.
+
+Penalties are special-cased to the canonical **0.76** at serve time (an
+out-of-band `shot_type` hint), which keeps the `GameState` contract
+positions-only. Full numbers in [reports/evaluation.md](reports/evaluation.md).
+
+## Tactics Board
+
+A free-form pitch for sketching shape and movement. It shares the SVG pitch and
+theme with the other two tools, but there's no model behind it — just a drawing
+surface.
+
+- **11v11 / 9v9 / 7v7**, each with its own bank of formations (4-3-3 down to
+  5-3-2 at 11-a-side; 2-1-3 and similar at 7-a-side) — home and away pick
+  independently, since opponents rarely line up the same way.
+- **Move / Draw / Pass / Run / Erase** tools to reposition players and annotate
+  arrows for passes and off-ball runs, in five selectable colors.
+- Canonical shirt numbers per formation slot (1 GK, 2 RB, 3 LB, 4/5 CB, 6 CDM,
+  7 RW, 8 CM, 9 ST, 10 CAM, 11 LW), toggleable on/off.
+- **Undo**, **clear lines**, and **reset** to start a new play without reloading.
+
+Entirely frontend (`frontend/board.js`) — no API calls, no backend state.
+
 ## Run it locally
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-uvicorn xg.serve.app:app --reload   # serves both modes (xG + Forecaster) + UI
+uvicorn xg.serve.app:app --reload   # serves all three tools + UI
 # → http://127.0.0.1:8000   (API docs at /docs)
 ```
 
@@ -280,7 +305,7 @@ src/forecaster/
   formats/league.py           # documented stub (second target)
   formats/champions_league.py # documented stub (third target)
   artifacts/          # committed params, config, group forecast, metrics, snapshot
-frontend/             # SVG pitch + forecaster views (vanilla JS, shared theme)
+frontend/             # SVG pitch, forecaster views + tactics board (vanilla JS, shared theme)
 notebooks/            # EDA only
 tests/                # schema, features, metrics, scenarios, API, forecaster
 ```
