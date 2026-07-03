@@ -67,11 +67,12 @@
       };
     });
 
+    // Tabs control title odds only — switching reloads odds, not the bracket.
     $("fc-tabs").querySelectorAll(".fc-tab").forEach((btn) => {
       btn.onclick = async () => {
         state.tab = btn.dataset.tab;
         $("fc-tabs").querySelectorAll(".fc-tab").forEach((b) => b.classList.toggle("active", b === btn));
-        try { await loadBracketAndOdds(); }
+        try { await loadOdds(); }
         catch (e) { console.error("Tab load failed:", state.tab, e); }
       };
     });
@@ -90,8 +91,8 @@
     });
 
     await loadAdjustments(); // before the odds render, so adjusted teams get flagged
-    await Promise.all([loadBracketAndOdds(), headToHead(), loadGroups(), loadAccuracy()]);
-    setInterval(loadBracketAndOdds, 120000); // refresh as games are played
+    await Promise.all([loadBracket(), loadOdds(), headToHead(), loadGroups(), loadAccuracy()]);
+    setInterval(() => { loadBracket(); loadOdds(); }, 120000); // refresh as games are played
   }
 
   // ---- news overlay (manual injury/squad adjustments) ---------------------
@@ -168,28 +169,19 @@
     sel.innerHTML = teams.map((t) => `<option${t === chosen ? " selected" : ""}>${esc(t)}</option>`).join("");
   }
 
-  // ---- odds + bracket -----------------------------------------------------
-  async function loadBracketAndOdds() {
-    const [b, sim] = await Promise.all([
-      api("/forecaster/bracket?competition=" + state.comp),
-      api("/forecaster/simulation?competition=" + state.comp + "&mode=" + state.tab),
-    ]);
+  // ---- bracket (independent of the odds tab) --------------------------------
+  async function loadBracket() {
+    const b = await api("/forecaster/bracket?competition=" + state.comp);
     state.bracket = b;
     const n = b.settled_count;
-    const asofEl = $("asof");
-    if (state.tab === "pretournament") {
-      asofEl.textContent = "Pre-tournament: base DC ratings, no injury adjustments, simulating all knockout games from scratch.";
-      $("bk-toggle").style.display = "none";
-      state.view = "prediction";
-    } else if (state.tab === "reality") {
-      asofEl.textContent = `Reality: DC model re-fitted with all WC2026 results through ${niceDate(b.as_of)}. ${n} knockout game${n === 1 ? "" : "s"} played.`;
-      $("bk-toggle").style.display = "";
-    } else {
-      asofEl.textContent = `Live: updated through ${niceDate(b.as_of)}. ${n} knockout game${n === 1 ? "" : "s"} played — pre-tournament ratings, injury adjustments applied.`;
-      $("bk-toggle").style.display = "";
-    }
-    renderOdds(sim);
+    $("asof").textContent = `Updated through ${niceDate(b.as_of)}. ${n} knockout game${n === 1 ? "" : "s"} played so far.`;
     renderBracket();
+  }
+
+  // ---- odds (controlled by the pretournament / live tab) -------------------
+  async function loadOdds() {
+    const sim = await api("/forecaster/simulation?competition=" + state.comp + "&mode=" + state.tab);
+    renderOdds(sim);
   }
 
   function renderOdds(sim) {
@@ -247,15 +239,18 @@
     const b = state.bracket;
     if (!b) return;
     const data = b[state.view];
-    const isPred = state.view === "prediction";
+    if (!data) return;
+    const isPred = state.view !== "actual";
 
-    if (isPred) {
-      $("bk-note").innerHTML = `My single most likely winner of each knockout game, advanced round by round to a champion: <b>${esc(data.champion)}</b>. Each percentage is that team's chance of winning that one game.`;
+    if (state.view === "pretournament_prediction") {
+      $("bk-note").innerHTML = `Pre-tournament predictions using base team ratings, before any games were played and with no injury adjustments. Predicted champion: <b>${esc(data.champion)}</b>.`;
+    } else if (state.view === "prediction") {
+      $("bk-note").innerHTML = `Live predictions using current ratings with injury adjustments applied. Predicted champion: <b>${esc(data.champion)}</b>. Each percentage is that team's chance of winning that specific game.`;
     } else {
       const c = data.correct, d = data.decided;
       $("bk-note").innerHTML = d
-        ? `So far <b>${c} of ${d}</b> finished knockout game${d === 1 ? "" : "s"} matched the model's prediction. A ✓ marks each correct one.`
-        : `No knockout games have finished yet. This updates as they are played.`;
+        ? `The model got <b>${c} of ${d}</b> knockout game${d === 1 ? "" : "s"} right so far. A ✓ marks each correct pick.`
+        : `No knockout games have been played yet. This will update as they go.`;
     }
 
     const renderMatch = isPred ? predMatch : actualMatch;
@@ -284,16 +279,15 @@
 
     const finalRound = byRound.final;
     const finalM = finalRound && finalRound.matches[0];
-    const sf = byRound.semifinal ? byRound.semifinal.matches : [];
-    const loser = (m) => (m && m.winner ? (m.winner === m.a ? m.b : m.a) : null);
-    const l1 = loser(sf[0]), l2 = loser(sf[1]);
+    const tp = data.third_place || {};
 
     const champTbd = !data.champion;
+    const champLabel = state.view === "actual" ? "Champion" : "Predicted champion";
     const center = `<div class="bk-col center-col no-join">
       <div class="bk-final-content">
         <div class="bk-champ ${champTbd ? "tbd" : ""}">
           <span class="trophy" aria-hidden="true">🏆</span>
-          <span class="cl">${isPred ? "Predicted champion" : "Champion"}</span>
+          <span class="cl">${champLabel}</span>
           <span class="cn">${champTbd ? "TBD" : named(data.champion)}</span>
         </div>
         <div class="bk-center-node">
@@ -302,9 +296,9 @@
         </div>
         <div class="bk-bronze">
           <div class="bk-head">Third place</div>
-          <div class="bk-match"><div class="bk-box">
-            ${bkRow(l1, "", l1 ? "" : "tbd")}${bkRow(l2, "", l2 ? "" : "tbd")}
-          </div></div>
+          ${tp.a ? renderMatch(tp) : `<div class="bk-match"><div class="bk-box">
+            ${bkRow(null, "", "tbd")}${bkRow(null, "", "tbd")}
+          </div></div>`}
         </div>
       </div></div>`;
 

@@ -311,9 +311,13 @@ _ROUND_LABELS = {
 }
 
 
-def _advance_prob(home: str, away: str, competition: str = DEFAULT_COMPETITION) -> float:
+def _advance_prob(
+    home: str, away: str, competition: str = DEFAULT_COMPETITION,
+    params: "Params | None" = None,
+) -> float:
     """P(home advances) in a neutral knockout tie (normal time or shootout)."""
-    mat = dc.predict(_params_for(competition), home, away, neutral=True)
+    p = params if params is not None else _params_for(competition)
+    mat = dc.predict(p, home, away, neutral=True)
     ph, pdraw, pa = dc.outcome_probs(mat)
     denom = ph + pa
     share = ph / denom if denom > 1e-12 else 0.5
@@ -325,11 +329,14 @@ _BRACKET_ROUNDS = ["round_of_32", "round_of_16", "quarterfinal", "semifinal", "f
 
 def _bracket_view(
     cfg: dict, played: dict, mode: str, competition: str = DEFAULT_COMPETITION,
+    params: "Params | None" = None,
 ) -> dict:
     """Build one bracket. mode='prediction' advances each tie's most likely winner
     (head-to-head); mode='actual' advances the real winners and leaves undecided
     ties as TBD, flagging whether each result matched the pick. Both use the same
-    head-to-head favourite, so the two views never disagree about a pick."""
+    head-to-head favourite, so the two views never disagree about a pick.
+    Pass params to override the default injury-adjusted ratings (e.g. base params
+    for a pre-tournament view)."""
     ko = cfg["knockout"]
     r32 = {f["match"]: tuple(f["teams"]) for f in ko["round_of_32"]}
     tree = {int(k): v for k, v in ko["tree"].items()}
@@ -350,7 +357,7 @@ def _bracket_view(
             # a neutral knockout), advanced round by round. This is the same rule
             # the "actual" view grades results against, so the Prediction and
             # Results views can never disagree about who was picked.
-            pa = _advance_prob(a, b, competition)
+            pa = _advance_prob(a, b, competition, params=params)
             winner = a if pa >= 0.5 else b
             entry.update(prob_a=pa, prob_b=1.0 - pa, winner=winner, settled=False)
         else:
@@ -361,7 +368,7 @@ def _bracket_view(
                     [rec["home_goals"], rec["away_goals"]]
                     if rec["home"] == a else [rec["away_goals"], rec["home_goals"]]
                 )
-                pa = _advance_prob(a, b, competition)
+                pa = _advance_prob(a, b, competition, params=params)
                 pred = a if pa >= 0.5 else b
                 hit = winner == pred
                 decided += 1
@@ -382,16 +389,46 @@ def _bracket_view(
     if mode == "actual":
         out["correct"] = correct
         out["decided"] = decided
+
+    # Third place match: losers of the two semifinals.
+    sf_matches = ko["rounds"]["semifinal"]
+    sf_losers = []
+    for sm in sf_matches:
+        e = built[sm]
+        w = winners.get(sm)
+        if w and e["a"] and e["b"]:
+            sf_losers.append(e["b"] if w == e["a"] else e["a"])
+        else:
+            sf_losers.append(None)
+    a3, b3 = (sf_losers + [None, None])[:2]
+    if mode == "prediction" and a3 and b3:
+        pa3 = _advance_prob(a3, b3, competition, params=params)
+        w3 = a3 if pa3 >= 0.5 else b3
+        out["third_place"] = {"a": a3, "b": b3, "prob_a": pa3, "prob_b": 1.0 - pa3,
+                              "winner": w3, "settled": False}
+    elif mode == "actual":
+        rec3 = played.get(frozenset((a3, b3))) if (a3 and b3) else None
+        if rec3:
+            w3 = rec3["winner"]
+            score3 = ([rec3["home_goals"], rec3["away_goals"]]
+                      if rec3["home"] == a3 else [rec3["away_goals"], rec3["home_goals"]])
+            pa3 = _advance_prob(a3, b3, competition, params=params)
+            pred3 = a3 if pa3 >= 0.5 else b3
+            out["third_place"] = {"a": a3, "b": b3, "winner": w3, "score": score3,
+                                  "settled": True, "predicted_winner": pred3,
+                                  "correct": w3 == pred3}
+        else:
+            out["third_place"] = {"a": a3, "b": b3, "winner": None, "settled": False}
+
     return out
 
 
 def bracket(competition: str, as_of: str | None = None) -> dict:
-    """Two brackets for side-by-side comparison: the model's predictions for every
-    knockout game, and the actual results as they come in (with hit/miss flags).
-
-    Both brackets pick each tie's head-to-head favourite (news overlay included),
-    so the per-game numbers are real single-game win chances and the Prediction and
-    Results views always agree on who was picked."""
+    """Three bracket views: pre-tournament predictions (base ratings, no injury
+    overlay), live predictions (injury-adjusted ratings), and actual results
+    with hit/miss flags. All three use the same head-to-head rule, so the
+    win-chance numbers in each prediction view are consistent with the matching
+    title-odds simulation mode."""
     load()
     cfg = get_competition(competition)
     as_of = as_of or _today()
@@ -405,6 +442,9 @@ def bracket(competition: str, as_of: str | None = None) -> dict:
         "name": cfg["name"],
         "as_of": as_of,
         "settled_count": len(played),
+        "pretournament_prediction": _bracket_view(
+            cfg, {}, "prediction", competition=competition, params=_params
+        ),
         "prediction": _bracket_view(cfg, {}, "prediction", competition=competition),
         "actual": _bracket_view(cfg, played, "actual", competition=competition),
     }

@@ -28,12 +28,6 @@
       </div>
     </header>
 
-    <div class="fc-tabs" id="fc-tabs">
-      <button class="fc-tab" data-tab="pretournament">Pre-tournament</button>
-      <button class="fc-tab active" data-tab="live">Live</button>
-      <button class="fc-tab" data-tab="reality">Reality</button>
-    </div>
-
     <div class="fc-main">
     <p class="asof" id="asof"></p>
 
@@ -41,7 +35,11 @@
       <!-- ===================== WINNER ODDS ===================== -->
       <section class="block">
         <h2>Title odds</h2>
-        <p class="lead">Each team's chance to win the tournament, from 10,000 simulated runs.</p>
+        <p class="lead">Each team's chance of winning the whole tournament. The model runs the tournament 10,000 times and counts how often each team comes out on top.</p>
+        <div class="fc-tabs" id="fc-tabs">
+          <button class="fc-tab" data-tab="pretournament">Pre-tournament</button>
+          <button class="fc-tab active" data-tab="live">Live</button>
+        </div>
         <div class="odds" id="odds"></div>
         <div class="adjust-note" id="adjust-note"></div>
       </section>
@@ -72,12 +70,12 @@
     <!-- ===================== BRACKETS ===================== -->
     <section class="block">
       <h2>The bracket</h2>
-      <p class="lead">My single most likely result for every knockout game, shown
-        next to how it's actually turning out. Each number is that team's chance of
-        winning that game, and I advance the favourite round by round. Flip between
-        the two to see how the forecast is holding up.</p>
+      <p class="lead">The model's most likely outcome for every knockout game, alongside
+        how it's actually going. Each percentage is that team's chance of winning that
+        specific game. The highest-probability team advances round by round.</p>
       <div class="bk-toggle" id="bk-toggle">
-        <button data-view="prediction" class="active">Prediction</button>
+        <button data-view="pretournament_prediction">Pre-tournament</button>
+        <button data-view="prediction" class="active">Live</button>
         <button data-view="actual">Results</button>
       </div>
       <div class="bk-note" id="bk-note"></div>
