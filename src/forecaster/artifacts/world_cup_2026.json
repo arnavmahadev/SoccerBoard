@@ -735,6 +735,18 @@
         "away": "Japan",
         "home_goals": 2,
         "away_goals": 1
+      },
+      {
+        "home": "Spain",
+        "away": "Austria",
+        "home_goals": 3,
+        "away_goals": 0
+      },
+      {
+        "home": "Portugal",
+        "away": "Croatia",
+        "home_goals": 2,
+        "away_goals": 1
       }
     ]
   },
