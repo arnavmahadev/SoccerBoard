@@ -110,26 +110,37 @@
     if (!r) return "";
     const weaker = (r.items || []).some((it) => it.att_delta > 0 || it.def_delta > 0);
     return ` <button class="news-chip ${weaker ? "down" : ""}" data-team="${esc(team)}" ` +
-      `aria-expanded="${open}" title="Injury news I've factored in. Click for details.">` +
+      `aria-expanded="${open}" title="Injury news factored into these odds. Click for details.">` +
       `news <span class="chev">${open ? "▴" : "▾"}</span></button>`;
   }
 
+  const SPARSE_THRESHOLD = 8;
+
   // plain-English summary of which players are out and by how much
+  // Only counts players with enough appearances to trust their delta.
   function impactSentence(r) {
-    const totalAtt = (r.items || []).reduce((s, it) => s + (it.att_delta || 0), 0);
-    const totalDef = (r.items || []).reduce((s, it) => s + (it.def_delta || 0), 0);
+    const reliable = (r.items || []).filter((it) => it.covered && it.n_matches >= SPARSE_THRESHOLD);
+    const totalAtt = reliable.reduce((s, it) => s + (it.att_delta || 0), 0);
+    const totalDef = reliable.reduce((s, it) => s + (it.def_delta || 0), 0);
     const bits = [];
-    if (totalAtt > 0.005) bits.push(`attack by <b>${totalAtt.toFixed(2)} expected goals/game</b>`);
-    if (totalDef > 0.005) bits.push(`defence by <b>${totalDef.toFixed(2)} expected goals/game</b>`);
+    if (totalAtt > 0.005) bits.push(`<b>${totalAtt.toFixed(2)} fewer expected goals scored per game</b>`);
+    if (totalDef > 0.005) bits.push(`<b>${totalDef.toFixed(2)} more expected goals conceded per game</b>`);
     if (!bits.length) return "";
-    return `<p class="news-impact">Based on their StatsBomb lineup data, I've reduced their ` +
+    return `<p class="news-impact">Based on StatsBomb lineup data, the model estimates ` +
       `${bits.join(" and ")}.</p>`;
   }
 
   // the expandable detail panel under an adjusted team's row
   function newsPanel(r) {
-    const items = (r.items || []).map((it) =>
-      `<li><b>${esc(it.player)}</b> ${esc(it.issue)}</li>`).join("");
+    const items = (r.items || []).map((it) => {
+      let note = "";
+      if (!it.covered) {
+        note = ` <span class="news-sparse">(no training data)</span>`;
+      } else if (it.n_matches < SPARSE_THRESHOLD) {
+        note = ` <span class="news-sparse">(only ${it.n_matches} appearances in training data, so impact is not estimated)</span>`;
+      }
+      return `<li><b>${esc(it.player)}</b> ${esc(it.issue)}${note}</li>`;
+    }).join("");
     const links = (r.sources || []).map((s) => s.url
       ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`
       : esc(s.label)).join(", ");

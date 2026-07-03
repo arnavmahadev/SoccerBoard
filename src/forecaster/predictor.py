@@ -157,12 +157,14 @@ def adjustments(competition: str = DEFAULT_COMPETITION) -> dict:
             pi = _player_deltas.find_player(pname) if _player_deltas else None
             att_d = float(max(_player_deltas.att_delta[pi], 0.0)) if pi is not None and _player_deltas else 0.0
             def_d = float(max(_player_deltas.def_delta[pi], 0.0)) if pi is not None and _player_deltas else 0.0
+            n_matches = int(_player_deltas.n_matches[pi]) if pi is not None and _player_deltas else 0
             enriched.append({
                 "player": pname,
                 "issue": it.get("issue", ""),
                 "att_delta": round(att_d, 4),
                 "def_delta": round(def_d, 4),
                 "covered": pi is not None,
+                "n_matches": n_matches,
             })
         seen_sources: dict[str, str] = {}
         for it in items:
