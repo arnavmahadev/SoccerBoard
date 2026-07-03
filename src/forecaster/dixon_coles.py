@@ -267,7 +267,19 @@ def outcome_probs(matrix: np.ndarray) -> tuple[float, float, float]:
 
 
 def most_likely_score(matrix: np.ndarray) -> tuple[int, int]:
-    i, j = np.unravel_index(int(np.argmax(matrix)), matrix.shape)
+    """Most likely score conditional on the most likely outcome (home/draw/away)."""
+    home_p = float(np.tril(matrix, -1).sum())
+    draw_p = float(np.trace(matrix))
+    away_p = float(np.triu(matrix, 1).sum())
+    best = max(home_p, draw_p, away_p)
+    if best == home_p:
+        mask = np.tril(np.ones_like(matrix), -1)
+    elif best == draw_p:
+        mask = np.eye(matrix.shape[0])
+    else:
+        mask = np.triu(np.ones_like(matrix), 1)
+    masked = matrix * mask
+    i, j = np.unravel_index(int(np.argmax(masked)), masked.shape)
     return int(i), int(j)
 
 
