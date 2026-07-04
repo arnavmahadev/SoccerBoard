@@ -755,6 +755,12 @@
         "away_goals": 1,
         "winner": "Egypt",
         "penalty": true
+      },
+      {
+        "home": "Argentina",
+        "away": "Cape Verde",
+        "home_goals": 3,
+        "away_goals": 2
       }
     ]
   },
