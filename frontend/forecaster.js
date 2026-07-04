@@ -44,7 +44,7 @@
   const named    = (t) => (t ? flag(t) + esc(t) : "TBD");
   const namedShort = (t) => (t ? flag(t) + esc(ABBR[t] || t) : `<span class="bk-tbd">TBD</span>`);
 
-  const state = { comp: null, teams: [], bracket: null, view: "prediction", tab: "live", adjust: {}, openNews: new Set() };
+  const state = { comp: null, teams: [], bracket: null, view: "prediction", tab: "live", adjust: {}, openNews: new Set(), perf: {}, openForm: new Set() };
 
   async function init() {
     let comps;
@@ -90,6 +90,18 @@
       btn.closest(".odds-item").querySelector(".news-panel").classList.toggle("open", open);
     });
 
+    // Same delegation for the "form" tag (in-tournament performance nudge).
+    $("odds").addEventListener("click", (e) => {
+      const btn = e.target.closest(".form-chip");
+      if (!btn) return;
+      const team = btn.dataset.team;
+      const open = !state.openForm.has(team);
+      open ? state.openForm.add(team) : state.openForm.delete(team);
+      btn.setAttribute("aria-expanded", open);
+      btn.querySelector(".chev").textContent = open ? "▴" : "▾";
+      btn.closest(".odds-item").querySelector(".form-panel").classList.toggle("open", open);
+    });
+
     await loadAdjustments(); // before the odds render, so adjusted teams get flagged
     await Promise.all([loadBracket(), loadOdds(), headToHead(), loadGroups(), loadAccuracy()]);
     setInterval(() => { loadBracket(); loadOdds(); }, 120000); // refresh as games are played
@@ -113,6 +125,68 @@
     return ` <button class="news-chip ${weaker ? "down" : ""}" data-team="${esc(team)}" ` +
       `aria-expanded="${open}" title="Injury news factored into these odds. Click for details.">` +
       `news <span class="chev">${open ? "▴" : "▾"}</span></button>`;
+  }
+
+  // the little clickable "form" tag: shown when a team's rating was nudged by how
+  // it has actually played in the tournament so far (over/under-performance).
+  function formChip(team, open) {
+    const r = state.perf[team];
+    if (!r) return "";
+    // Net rating movement: attack up + defense up = stronger.
+    const stronger = (r.att_delta + r.def_delta) >= 0;
+    return ` <button class="form-chip ${stronger ? "up" : "down"}" data-team="${esc(team)}" ` +
+      `aria-expanded="${open}" title="Tournament form factored into these odds. Click for details.">` +
+      `form <span class="chev">${open ? "▴" : "▾"}</span></button>`;
+  }
+
+  // plain-English read of a team's performance nudge, with the actual goal totals
+  // vs what the model expected across their tournament games. Attack and defense
+  // are described independently, so an over-performing attack alongside a leaky
+  // defense reads as exactly that.
+  function formPanel(r) {
+    const games = `${r.matches} tournament ${r.matches === 1 ? "game" : "games"}`;
+    const goals = (n) => `${n} ${n === 1 ? "goal" : "goals"}`;
+
+    // One side of the ball: actual goals vs the model's expected goals, and how
+    // that moved the rating. `delta` is the applied nudge (>0 = rating up) and is
+    // guaranteed to agree in sign with (actual - expected), since both come from
+    // the same pooled tournament totals.
+    const clause = (verb, actual, expected, delta, rating) => {
+      const gap = actual - expected;
+      if (Math.abs(gap) < 0.35)
+        return `${verb} <b>${goals(actual)}</b>, right in line with their <b>${expected.toFixed(1)} expected goals</b>, so their ${rating} rating stays put`;
+      const side = gap > 0 ? "more" : "fewer";
+      const move = delta > 0
+        ? `so their ${rating} rating gets a lift`
+        : `so their ${rating} rating dips`;
+      return `${verb} <b>${goals(actual)}</b>, ${Math.abs(gap).toFixed(1)} ${side} than their ` +
+        `<b>${expected.toFixed(1)} expected goals</b>, ${move}`;
+    };
+
+    const atk = clause("scored", r.gf, r.xgf, r.att_delta, "attack");
+    const def = clause("conceded", r.ga, r.xga, r.def_delta, "defense");
+
+    // Net movement across both sides. A side only counts as a mover if its goal
+    // gap cleared the same threshold the clause used to say "in line", so the net
+    // line never contradicts what each clause just showed.
+    const atkNear = Math.abs(r.gf - r.xgf) < 0.35;
+    const defNear = Math.abs(r.ga - r.xga) < 0.35;
+    const atkUp = !atkNear && r.att_delta > 0, atkDn = !atkNear && r.att_delta < 0;
+    const defUp = !defNear && r.def_delta > 0, defDn = !defNear && r.def_delta < 0;
+    let net;
+    if ((atkUp && defDn) || (atkDn && defUp)) {
+      const up = (r.att_delta + r.def_delta) >= 0;
+      net = `Those two tug in opposite directions, so on balance their rating edges <b>${up ? "up" : "down"}</b>.`;
+    } else if (atkUp || defUp) {
+      net = `Put it together and their rating ticks <b>up</b>.`;
+    } else if (atkDn || defDn) {
+      net = `Put it together and their rating ticks <b>down</b>.`;
+    } else {
+      net = `Put it together and their rating barely moves.`;
+    }
+
+    return `<div class="form-panel${state.openForm.has(r.team) ? " open" : ""}">` +
+      `<p class="news-impact">Over ${games} they've ${atk}. At the back they've ${def}. ${net}</p></div>`;
   }
 
   const SPARSE_THRESHOLD = 8;
@@ -184,18 +258,22 @@
   }
 
   function renderOdds(sim) {
+    state.perf = {};
+    (sim.performance || []).forEach((r) => { state.perf[r.team] = r; });
     const top = sim.teams.slice().sort((a, b) => b.champion - a.champion).slice(0, 10);
     const max = top[0].champion || 1;
     $("odds").innerHTML = top.map((r, i) => {
       const open = state.openNews.has(r.team);
+      const fopen = state.openForm.has(r.team);
       const panel = state.adjust[r.team] ? newsPanel(state.adjust[r.team]) : "";
+      const fpanel = state.perf[r.team] ? formPanel(state.perf[r.team]) : "";
       return `<div class="odds-item">
         <div class="odds-row ${i === 0 ? "lead-team" : ""}">
           <span class="odds-rank">${i + 1}</span>
-          <span class="odds-name">${flag(r.team)}${esc(r.team)}${adjChip(r.team, open)}</span>
+          <span class="odds-name">${flag(r.team)}${esc(r.team)}${adjChip(r.team, open)}${formChip(r.team, fopen)}</span>
           <span class="odds-track"><span class="odds-fill" style="width:${(r.champion / max) * 100}%"></span></span>
           <span class="odds-val">${pct(r.champion, r.champion < 0.1 ? 1 : 0)}</span>
-        </div>${panel}
+        </div>${panel}${fpanel}
       </div>`;
     }).join("");
   }

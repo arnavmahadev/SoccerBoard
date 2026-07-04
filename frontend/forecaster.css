@@ -71,6 +71,20 @@
 .news-chip.static, .news-chip.static:hover { cursor: default; border-color: transparent; }
 .news-panel { display: none; padding: 2px 4px 12px; }
 .news-panel.open { display: block; }
+/* "form" chip reuses the news-chip look; a dotted underline distinguishes an
+   on-pitch performance nudge from an off-pitch injury-news adjustment. */
+.form-chip {
+  font: inherit; font-size: 0.56rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+  display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 2px 7px;
+  border-radius: 999px; border: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
+  cursor: pointer; vertical-align: middle; line-height: 1.4; transition: background 0.12s, border-color 0.12s;
+}
+.form-chip .chev { font-size: 0.85em; opacity: 0.75; }
+.form-chip.down { color: var(--los); background: color-mix(in srgb, var(--los) 12%, transparent); }
+.form-chip.up   { color: var(--go);  background: color-mix(in srgb, var(--go) 12%, transparent); }
+.form-chip:hover { border-color: color-mix(in srgb, currentColor 55%, transparent); }
+.form-panel { display: none; padding: 2px 4px 12px; }
+.form-panel.open { display: block; }
 .news-items { margin: 0 0 8px; padding-left: 18px; font-size: 0.86rem; line-height: 1.5; }
 .news-items li { margin: 2px 0; }
 .news-items b { font-weight: 700; }
