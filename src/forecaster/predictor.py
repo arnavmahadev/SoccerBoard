@@ -19,6 +19,7 @@ import json
 import math
 import threading
 import time
+from collections import defaultdict
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -27,9 +28,11 @@ import numpy as np
 
 from forecaster import dixon_coles as dc
 from forecaster.data import (
+    Match,
     get_competition,
     list_competitions as _list_competitions,
     load_matches,
+    normalize_team,
     tournament_matches,
 )
 from forecaster.dixon_coles import Params
@@ -43,6 +46,19 @@ DEFAULT_COMPETITION = "world_cup_2026"
 SIM_TTL_SECONDS = 120.0  # re-simulate at most this often per as-of date
 LIVE_TTL = 120.0         # re-fetch the results feed at most this often
 
+# In-tournament performance overlay: nudge a team's frozen strength by how far
+# its actual tournament scorelines have diverged from what the model expected, so
+# a side that has been labouring (or flying) shifts the live forecast a little.
+PERF_ETA = 0.20      # fraction of the pooled log-surprise folded into the rating
+PERF_SMOOTH = 0.7    # per-goal smoothing in the log ratio (avoids log 0, damps blowups)
+PERF_CAP = 0.5       # cap on |adjustment| per team per side
+
+# Knockout single-game variance: how far each knockout tie's advance probability
+# is regressed toward a coin flip. A knockout is one match, far noisier than a
+# season-long rating, so without this the simulator over-concentrates the title
+# on the top seed and understates how often favourites actually go out.
+KNOCKOUT_UPSET = 0.20
+
 _lock = threading.Lock()
 _params: Params | None = None
 _sampler: MatchSampler | None = None
@@ -51,7 +67,6 @@ _group_forecast: dict | None = None
 _news: dict | None = None             # raw news_items.json content
 _player_deltas: PlayerDeltas | None = None
 _adj_params: dict[str, Params] = {}   # competition -> player-adjusted params
-_adj_sampler: dict[str, MatchSampler] = {}
 _sim_cache: dict[tuple, tuple[float, dict]] = {}
 
 _reality_lock = threading.Lock()
@@ -76,7 +91,7 @@ def load():
                 f"No fitted params at {pp}. Run: python -m forecaster.build_artifacts"
             )
         _params = Params.from_json(pp)
-        _sampler = MatchSampler(_params)
+        _sampler = MatchSampler(_params, upset=KNOCKOUT_UPSET)
         mp = ARTIFACTS / "metrics.json"
         _metrics = json.loads(mp.read_text()) if mp.exists() else {}
         gp = ARTIFACTS / "group_forecast.json"
@@ -131,13 +146,72 @@ def _params_for(competition: str) -> Params:
     return _adj_params[competition]
 
 
-def _sampler_for(competition: str) -> MatchSampler:
-    p = _params_for(competition)
-    if p is _params:
-        return _sampler
-    if competition not in _adj_sampler:
-        _adj_sampler[competition] = MatchSampler(p)
-    return _adj_sampler[competition]
+
+# --- In-tournament performance overlay ---------------------------------------
+# The news overlay above adjusts for who is *available*; this adjusts for how a
+# team has actually *played* so far. We pool each team's tournament goals scored
+# and conceded against what the frozen model expected across those same fixtures,
+# and shift attack/defense by a small, capped fraction of that surprise (on a log
+# scale). Working from pooled totals — not a per-match sum — keeps the nudge a
+# monotonic function of "scored X vs Y expected", so the plain-English panel the
+# UI shows can never contradict the direction the rating actually moved.
+# Performing exactly to expectation — a favourite easing past a minnow it was
+# meant to beat — moves nothing; only over/under-performance relative to strength
+# registers. The small learning rate keeps the pre-tournament fit dominant: this
+# bends the live odds, it doesn't break them, which is the point of the
+# frozen-strength design.
+
+def _played_tournament_matches(cfg: dict, feed_matches: list[Match]) -> list[Match]:
+    """Every played tournament game: the live feed plus knockout result-overrides
+    (recent games not yet in the feed), deduped by the pair of teams."""
+    played = [m for m in feed_matches if m.played]
+    seen = {frozenset((m.home, m.away)) for m in played}
+    for r in cfg.get("knockout", {}).get("result_overrides", []):
+        home, away = normalize_team(r["home"]), normalize_team(r["away"])
+        if frozenset((home, away)) in seen:
+            continue
+        played.append(Match(
+            date=cfg.get("group_stage_end", ""), home=home, away=away,
+            home_goals=r["home_goals"], away_goals=r["away_goals"],
+            neutral=True, tournament=cfg["tournament_label"],
+        ))
+    return played
+
+
+def _performance_overlay(base: Params, played: list[Match]) -> tuple[Params, list[dict]]:
+    """Base params nudged by tournament over/under-performance, plus a per-team
+    breakdown of goals scored/conceded vs expected and the applied attack/defense
+    deltas (largest movement first)."""
+    tidx = base.index()
+    # team -> [matches, goals_for, exp_for, goals_against, exp_against]
+    agg: dict[str, list[float]] = defaultdict(lambda: [0, 0, 0.0, 0, 0.0])
+    for m in played:
+        if m.home not in tidx or m.away not in tidx:
+            continue
+        lam, mu = dc.goal_expectations(base, m.home, m.away, m.neutral)
+        h = agg[m.home]; h[0] += 1; h[1] += m.home_goals; h[2] += lam; h[3] += m.away_goals; h[4] += mu
+        a = agg[m.away]; a[0] += 1; a[1] += m.away_goals; a[2] += mu; a[3] += m.home_goals; a[4] += lam
+
+    def clamp(v: float) -> float:
+        return max(-PERF_CAP, min(PERF_CAP, PERF_ETA * v))
+
+    attack = list(base.attack)
+    defense = list(base.defense)
+    rows = []
+    for t, (n, gf, xgf, ga, xga) in agg.items():
+        c = PERF_SMOOTH * n  # per-goal smoothing scaled to the number of games
+        # Scored more than expected -> attack up; conceded fewer -> defense up.
+        da = clamp(math.log((gf + c) / (xgf + c)))
+        dd = clamp(math.log((xga + c) / (ga + c)))
+        attack[tidx[t]] += da
+        defense[tidx[t]] += dd
+        rows.append({
+            "team": t, "att_delta": round(da, 4), "def_delta": round(dd, 4),
+            "matches": int(n), "gf": int(gf), "xgf": round(xgf, 1),
+            "ga": int(ga), "xga": round(xga, 1),
+        })
+    rows.sort(key=lambda r: abs(r["att_delta"]) + abs(r["def_delta"]), reverse=True)
+    return replace(base, attack=attack, defense=defense), rows
 
 
 def adjustments(competition: str = DEFAULT_COMPETITION) -> dict:
@@ -191,7 +265,7 @@ def _get_reality_params(as_of: str) -> tuple[Params, MatchSampler]:
         )
         p = dc.fit(all_matches, xi=0.25, reg=0.02, ref_date=as_of)
         _reality_params = p
-        _reality_sampler = MatchSampler(p)
+        _reality_sampler = MatchSampler(p, upset=KNOCKOUT_UPSET)
         _reality_cache_time = time.time()
     return _reality_params, _reality_sampler
 
@@ -261,6 +335,7 @@ def simulation(
     if cached and (time.time() - cached[0]) < sim_ttl:
         return cached[1]
 
+    perf_rows: list[dict] = []
     if mode == "pretournament":
         fmt = WorldCupFormat(cfg)
         raw = monte_carlo(fmt, _sampler, n=n, seed=12345)
@@ -276,7 +351,12 @@ def simulation(
             _, r_sampler = _get_reality_params(as_of)
             raw = monte_carlo(fmt, r_sampler, n=n, seed=12345)
         else:
-            raw = monte_carlo(fmt, _sampler_for(competition), n=n, seed=12345)
+            # Live: frozen strengths + news overlay, then bent by how each side has
+            # actually played in the tournament so far.
+            base = _params_for(competition)
+            played = _played_tournament_matches(cfg, matches)
+            perf_params, perf_rows = _performance_overlay(base, played)
+            raw = monte_carlo(fmt, MatchSampler(perf_params, upset=KNOCKOUT_UPSET), n=n, seed=12345)
 
     rows = []
     group_of = {t: g for g, members in cfg["groups"].items() for t in members}
@@ -287,6 +367,16 @@ def simulation(
     settled = [
         {"teams": sorted(pair), "winner": w} for pair, w in fixed.items()
     ]
+    # Only surface performance nudges for teams in the bracket, still alive (not
+    # knocked out by a settled result), that actually moved. Drops group-stage
+    # non-qualifiers, who played but can never appear in the odds list.
+    in_bracket = {r["team"] for r in rows}
+    eliminated = {t for pair, w in fixed.items() for t in pair if t != w}
+    perf = [
+        r for r in perf_rows
+        if r["team"] in in_bracket and r["team"] not in eliminated
+        and (abs(r["att_delta"]) + abs(r["def_delta"]) >= 0.01)
+    ]
     result = {
         "competition": competition,
         "name": cfg["name"],
@@ -296,6 +386,7 @@ def simulation(
         "stages": raw["stages"],
         "teams": rows,
         "settled_knockout": settled,
+        "performance": perf,
         "kickoff": cfg.get("kickoff"),
     }
     _sim_cache[key] = (time.time(), result)

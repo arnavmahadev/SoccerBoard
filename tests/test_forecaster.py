@@ -235,6 +235,69 @@ def test_player_delta_lowers_scoring():
         fc._adj_params.update(old_adj)
 
 
+def test_performance_overlay_direction():
+    """The in-tournament overlay nudges a team the right way: a side that concedes
+    far more than expected loses defensive rating; one that scores far more than
+    expected gains attack. Teams that play to expectation barely move."""
+    from forecaster import predictor as fc
+    from forecaster.data import Match
+
+    fc.load()
+    base = fc._params_for("__no_overlay__")  # frozen params, no news
+    idx = base.index()
+    strong, weak = "Argentina", "Cape Verde"
+    assert strong in idx and weak in idx
+
+    lam, mu = dc.goal_expectations(base, strong, weak, neutral=True)
+    # A shock scoreline: the favourite is held and leaks goals it never should.
+    shock = Match(date="2026-07-01", home=strong, away=weak,
+                  home_goals=1, away_goals=3, neutral=True, tournament="FIFA World Cup")
+    adj, rows = fc._performance_overlay(base, [shock])
+    by_team = {r["team"]: r for r in rows}
+
+    # Favourite conceded 3 vs ~0.4 expected -> defense rating falls.
+    assert by_team[strong]["def_delta"] < 0
+    assert adj.defense[idx[strong]] < base.defense[idx[strong]]
+    # Underdog scored 3 vs a fraction expected -> attack rating rises.
+    assert by_team[weak]["att_delta"] > 0
+    assert adj.attack[idx[weak]] > base.attack[idx[weak]]
+
+    # A result exactly at expectation moves nothing.
+    par = Match(date="2026-07-01", home=strong, away=weak,
+                home_goals=round(lam), away_goals=round(mu), neutral=True,
+                tournament="FIFA World Cup")
+    _, rows2 = fc._performance_overlay(base, [par])
+    for r in rows2:
+        if r["team"] in (strong, weak):
+            assert abs(r["att_delta"]) < 0.1 and abs(r["def_delta"]) < 0.1
+
+
+def test_knockout_upset_regresses_toward_coinflip(params):
+    """The upset knob pulls a favourite's advance probability toward 50/50 without
+    flipping the favourite, and upset=0 leaves the strength model untouched."""
+    strong, weak = "Spain", "Austria"
+    plain = MatchSampler(params, upset=0.0)
+    tempered = MatchSampler(params, upset=0.5)
+    rng = np.random.default_rng(0)
+    plain.knockout_winner(strong, weak, True, rng)
+    tempered.knockout_winner(strong, weak, True, rng)
+    p0 = plain._advance[(strong, weak, True)]
+    p1 = tempered._advance[(strong, weak, True)]
+    assert p0 > 0.5                       # favourite really is favoured
+    assert 0.5 < p1 < p0                  # regressed toward the coin flip, still favoured
+    assert p1 == pytest.approx(0.5 + (p0 - 0.5) * 0.5)
+
+
+def test_api_simulation_exposes_performance(client):
+    """Live simulation surfaces a `performance` breakdown; pretournament doesn't."""
+    live = client.get("/forecaster/simulation?mode=live&n=1000").json()
+    assert "performance" in live and isinstance(live["performance"], list)
+    for r in live["performance"]:
+        assert "att_delta" in r and "def_delta" in r and r["team"]
+    pre = client.get("/forecaster/simulation?mode=pretournament&n=1000").json()
+    assert pre["performance"] == []
+
+
 def test_bracket_views_never_contradict(client):
     """Prediction and Results grade a tie by the same head-to-head favourite, so a
     settled Round-of-32 game can't show as correct in one view and wrong in the

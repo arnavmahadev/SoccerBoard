@@ -30,9 +30,15 @@ class MatchSampler:
     across thousands of simulations.
     """
 
-    def __init__(self, params: Params, max_goals: int = 10):
+    def __init__(self, params: Params, max_goals: int = 10, upset: float = 0.0):
         self.params = params
         self.max_goals = max_goals
+        # Knockout single-game variance: each tie's advance probability is regressed
+        # this fraction toward a coin flip (0 = pure strength model, 1 = 50/50). A
+        # knockout is one match — far noisier than a team's season-long rating — so
+        # a little regression stops the simulator over-concentrating the title on
+        # the top seed and better matches how often favourites actually go out.
+        self.upset = upset
         self._cdf: dict[tuple, np.ndarray] = {}
         self._ncols: dict[tuple, int] = {}
         self._advance: dict[tuple, float] = {}
@@ -61,7 +67,8 @@ class MatchSampler:
             ph, pd, pa = dc.outcome_probs(mat)
             denom = ph + pa
             tie_share = ph / denom if denom > 1e-12 else 0.5
-            self._advance[key] = ph + pd * tie_share
+            p = ph + pd * tie_share
+            self._advance[key] = 0.5 + (p - 0.5) * (1.0 - self.upset)
         return home if rng.random() < self._advance[key] else away
 
 
