@@ -92,8 +92,10 @@ def forecaster_teams(competition: str = "world_cup_2026") -> dict:
 
 @app.post("/forecaster/match")
 def forecaster_match(req: ForecastMatchRequest) -> dict:
-    """Goal matrix + W/D/L + expected scoreline for any two teams."""
-    return forecaster.predict_match(
+    """Goal matrix + W/D/L + expected scoreline for any two teams, on the same
+    live ratings (base + news + in-tournament form) as the title odds and
+    bracket, so the head-to-head can't contradict them."""
+    return forecaster.live_match(
         req.home, req.away, neutral=req.neutral, competition=req.competition
     )
 

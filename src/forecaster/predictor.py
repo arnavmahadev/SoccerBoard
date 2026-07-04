@@ -287,10 +287,11 @@ def teams(competition: str) -> list[str]:
 # --- Match predictor ---------------------------------------------------------
 def predict_match(
     home: str, away: str, neutral: bool = True, display: int = 6,
-    competition: str = DEFAULT_COMPETITION,
+    competition: str = DEFAULT_COMPETITION, params: Params | None = None,
 ) -> dict:
     load()
-    params = _params_for(competition)  # base ratings + any news overlay
+    if params is None:
+        params = _params_for(competition)  # base ratings + any news overlay
     mat = dc.predict(params, home, away, neutral)
     ph, pd, pa = dc.outcome_probs(mat)
     lam, mu = dc.goal_expectations(params, home, away, neutral)
@@ -514,12 +515,40 @@ def _bracket_view(
     return out
 
 
+def _live_ratings(competition: str, as_of: str) -> Params:
+    """Base ratings + news overlay, then bent by in-tournament over/under-
+    performance. This is the single set of live ratings every live forecaster
+    surface shares (title odds, predicted bracket, head-to-head), so none of them
+    can disagree about how strong a team is right now."""
+    cfg = get_competition(competition)
+    matches = tournament_matches(
+        cfg["tournament_label"], cfg["season_year"], as_of=as_of,
+        prefer_live=True, ttl_seconds=LIVE_TTL,
+    )
+    base = _params_for(competition)
+    params, _ = _performance_overlay(base, _played_tournament_matches(cfg, matches))
+    return params
+
+
+def live_match(
+    home: str, away: str, neutral: bool = True,
+    competition: str = DEFAULT_COMPETITION, as_of: str | None = None,
+) -> dict:
+    """Head-to-head forecast on the live ratings (base + news + in-tournament
+    form), so it agrees with the title odds and the predicted bracket."""
+    load()
+    as_of = as_of or _today()
+    return predict_match(home, away, neutral=neutral, competition=competition,
+                         params=_live_ratings(competition, as_of))
+
+
 def bracket(competition: str, as_of: str | None = None) -> dict:
-    """Three bracket views: pre-tournament predictions (base ratings, no injury
-    overlay), live predictions (injury-adjusted ratings), and actual results
-    with hit/miss flags. All three use the same head-to-head rule, so the
-    win-chance numbers in each prediction view are consistent with the matching
-    title-odds simulation mode."""
+    """Three bracket views: pre-tournament predictions (base ratings, no
+    overlay), live predictions (injury- and in-tournament-form-adjusted ratings),
+    and actual results with hit/miss flags. The live views use the same ratings
+    as the live title-odds simulation, so their win-chance numbers and picks are
+    consistent with the odds; the pre-tournament view matches the pre-tournament
+    odds mode."""
     load()
     cfg = get_competition(competition)
     as_of = as_of or _today()
@@ -528,6 +557,7 @@ def bracket(competition: str, as_of: str | None = None) -> dict:
         prefer_live=True, ttl_seconds=LIVE_TTL,
     )
     played = WorldCupFormat.knockout_played(cfg, matches)
+    live = _live_ratings(competition, as_of)
     return {
         "competition": competition,
         "name": cfg["name"],
@@ -536,8 +566,8 @@ def bracket(competition: str, as_of: str | None = None) -> dict:
         "pretournament_prediction": _bracket_view(
             cfg, {}, "prediction", competition=competition, params=_params
         ),
-        "prediction": _bracket_view(cfg, {}, "prediction", competition=competition),
-        "actual": _bracket_view(cfg, played, "actual", competition=competition),
+        "prediction": _bracket_view(cfg, {}, "prediction", competition=competition, params=live),
+        "actual": _bracket_view(cfg, played, "actual", competition=competition, params=live),
     }
 
 
