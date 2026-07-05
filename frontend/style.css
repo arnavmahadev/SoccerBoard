@@ -97,7 +97,7 @@ body {
   border-color: transparent;
 }
 
-.masthead-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.masthead-actions { display: flex; align-items: center; gap: 6px; flex: none; }
 .theme-toggle {
   padding: 8px 14px;
   font-size: 0.82rem;
