@@ -121,8 +121,9 @@
   function adjChip(team, open) {
     const r = state.adjust[team];
     if (!r) return "";
-    const weaker = (r.items || []).some((it) => it.att_delta > 0 || it.def_delta > 0);
-    return ` <button class="news-chip ${weaker ? "down" : ""}" data-team="${esc(team)}" ` +
+    // News chips are always red: the tag colour marks an off-pitch absence
+    // (injury/suspension), not the size or direction of the rating hit.
+    return ` <button class="news-chip" data-team="${esc(team)}" ` +
       `aria-expanded="${open}" title="Injury news factored into these odds. Click for details.">` +
       `news <span class="chev">${open ? "▴" : "▾"}</span></button>`;
   }
@@ -132,9 +133,10 @@
   function formChip(team, open) {
     const r = state.perf[team];
     if (!r) return "";
-    // Net rating movement: attack up + defense up = stronger.
-    const stronger = (r.att_delta + r.def_delta) >= 0;
-    return ` <button class="form-chip ${stronger ? "up" : "down"}" data-team="${esc(team)}" ` +
+    // Form chips are always green: the tag colour marks an on-pitch form nudge by
+    // type, not direction. The expandable panel spells out whether the team has
+    // over- or under-performed, so no signal is lost by fixing the colour.
+    return ` <button class="form-chip" data-team="${esc(team)}" ` +
       `aria-expanded="${open}" title="Tournament form factored into these odds. Click for details.">` +
       `form <span class="chev">${open ? "▴" : "▾"}</span></button>`;
   }
@@ -231,7 +233,7 @@
     if (!el) return;
     el.innerHTML = rows.length
       ? `These odds factor in the latest injury news. Teams with a ` +
-        `<span class="news-chip down static">news ▾</span> tag have someone out. Each missing ` +
+        `<span class="news-chip static">news ▾</span> tag have someone out. Each missing ` +
         `player's historical contribution is looked up from StatsBomb lineup data and subtracted ` +
         `from that team's rating. Tap a tag to see who's out and by how much.`
       : "";
