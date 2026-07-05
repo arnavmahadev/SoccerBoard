@@ -27,7 +27,8 @@ forecast calibration/backtesting.**
   goal-matrix heatmap, and the expected scoreline.
 - **Live tournament forecast** — Monte Carlo (10k sims) over the *remaining*
   bracket, seeded with the teams that actually qualified. Title and round-by-round
-  odds that **update as knockout games are played**.
+  odds that **update as knockout games are played**, and shift with **injury news
+  and in-tournament form**.
 - **Group-stage forecast** — pre-tournament P(win group) / P(advance) for every
   team next to the actual tables, plus a prediction for each of the 72 group
   matches against its real result.
@@ -69,10 +70,10 @@ Train on every international match before a cutoff, score matches after:
 
 | model | log loss | Brier | ECE | accuracy |
 |---|---|---|---|---|
-| **Dixon-Coles** | **0.858** | **0.502** | **0.023** | **60.0%** |
+| **Dixon-Coles** | **0.856** | **0.501** | **0.025** | **59.9%** |
 | base-rate baseline | 1.053 | 0.635 | — | 47.5% |
 
-2,546 held-out matches (Jan 2024 → Jun 2026). ECE **0.023** means a predicted 60%
+2,546 held-out matches (Jan 2024 → Jun 2026). ECE **0.025** means a predicted 60%
 really happens ~60% of the time.
 
 ### Pluggable format layer (the architecture)
@@ -106,26 +107,53 @@ matched the official schedule by team *and* date.
 
 A live in-progress forecaster is driven by an **as-of clock**: the server uses
 only results dated ≤ now, re-derives which knockout games are settled, and
-re-simulates the rest. Group results decide *who* advanced; team strengths stay
-**frozen at the pre-tournament fit** (never bumped by tournament games). As games
-finish, the forecast moves.
+re-simulates the rest. Group results decide *who* advanced. The Dixon-Coles fit
+itself stays **frozen at the pre-tournament snapshot** — never re-fit on
+tournament games — but in live mode a few overlays (below) ride on top of those
+frozen strengths. As games finish, the forecast moves.
+
+### Injury news & in-tournament form (the live overlays)
+
+Three adjustments sit on top of the frozen ratings in live mode:
+
+- **Injury / suspension news** — a hand-maintained `news_items.json` lists absent
+  players with a reason and a source URL. Instead of an ad-hoc penalty, each name
+  is looked up in a **Stage-2 player-contribution model**: on top of the fitted DC
+  team parameters, a second weighted fit estimates every player's attack/defense
+  **delta** (in log-goal space) from real lineups — **1,797 players over 296
+  StatsBomb matches** (WC 2018 & 2022, Euro 2020 & 2024, Copa América 2024, AFCON
+  2023). An absent player's learned delta is subtracted from their team's effective
+  strength; the magnitude comes from the fit, not a rubric, and a player with no
+  lineup history shrinks to ≈0 (no adjustment). Surfaced per team via
+  `/forecaster/adjustments`.
+- **In-tournament form** — a team that has over- or under-performed its frozen
+  strength across its games so far (pooled goals for/against vs. what the model
+  expected) is nudged accordingly. Performing exactly to expectation moves nothing;
+  only genuine over/under-performance shifts the rating, keeping the frozen-strength
+  design intact.
+- **Knockout variance** — each knockout tie is a single game, so its advance
+  probability is pulled toward a coin-flip by a fixed **upset** factor: one-off cup
+  ties are noisier than the long-run form the ratings encode.
 
 ### Endpoints
 
 `/forecaster/competitions`, `/forecaster/teams`, `POST /forecaster/match`,
-`/forecaster/simulation`, `/forecaster/groups`, `/forecaster/group-matches`,
-`/forecaster/metrics` — all competition-parameterized.
+`/forecaster/simulation`, `/forecaster/bracket`, `/forecaster/groups`,
+`/forecaster/group-matches`, `/forecaster/adjustments`, `/forecaster/metrics` —
+all competition-parameterized.
 
 ### Retrain / re-simulate
 
 ```bash
-python -m forecaster.build_artifacts   # fetch results, fit, group forecast, backtest, snapshot
+python -m forecaster.build_artifacts   # fetch results, fit, group forecast, player deltas, backtest, snapshot
+python -m forecaster.player_model      # (re)fit just the Stage-2 player-contribution deltas
 python -m forecaster.evaluate          # backtest + calibration only
 ```
 
-Committed artifacts (params, competition config, group forecast, metrics, results
-snapshot) make startup fast and offline, exactly like the xG model. The live
-knockout simulation is recomputed per request, not committed.
+Committed artifacts (params, competition config, group forecast, player deltas,
+metrics, results snapshot) make startup fast and offline, exactly like the xG
+model. The live simulation — knockout draw, news/form overlays — is recomputed
+per request, not committed.
 
 ## Expected Goals — shot quality
 
@@ -296,15 +324,17 @@ src/xg/
 src/forecaster/
   data.py             # match-results loader, team normalization, as-of clock
   dixon_coles.py      # scoreline model: fit / predict / goal matrix (analytic grad)
+  player_model.py     # Stage-2 per-player attack/defense deltas (StatsBomb lineups)
+  news_items.json     # injury/suspension overlay: absent players + reason + source
   evaluate.py         # backtest: log loss, Brier, calibration curve, baseline
-  predictor.py        # serving layer (numpy-only): match / simulation / groups
+  predictor.py        # serving layer (numpy-only): match / simulation / groups / overlays
   build_wc2026.py     # derive + validate the 2026 competition config from fixtures
   build_artifacts.py  # fit + write all committed artifacts
   formats/base.py     # CompetitionFormat interface + Monte Carlo driver
   formats/world_cup.py        # 48-team World Cup — fully implemented
   formats/league.py           # documented stub (second target)
   formats/champions_league.py # documented stub (third target)
-  artifacts/          # committed params, config, group forecast, metrics, snapshot
+  artifacts/          # committed params, config, group forecast, player deltas, metrics, snapshot
 frontend/             # SVG pitch, forecaster views + tactics board (vanilla JS, shared theme)
 notebooks/            # EDA only
 tests/                # schema, features, metrics, scenarios, API, forecaster
