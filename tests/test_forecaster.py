@@ -299,21 +299,23 @@ def test_api_simulation_exposes_performance(client):
 
 
 def test_bracket_views_never_contradict(client):
-    """Prediction and Results grade a tie by the same head-to-head favourite, so a
-    settled Round-of-32 game can't show as correct in one view and wrong in the
-    other (the Mexico bug), and the advancing side is always the one shown at the
-    higher probability."""
+    """The live Prediction view locks in games already played to their real result,
+    so an eliminated team never advances there and it agrees with the Results view
+    about who went through (a settled tie can't show one winner in one view and the
+    other winner in the other — the Mexico bug). Ties still to come are shown with
+    the advancing side at the higher probability."""
     bk = client.get("/forecaster/bracket").json()
-    pred_r32 = {m["match"]: m["winner"]
-                for rnd in bk["prediction"]["rounds"] if rnd["round"] == "round_of_32"
-                for m in rnd["matches"]}
-    for rnd in bk["actual"]["rounds"]:
-        if rnd["round"] != "round_of_32":
-            continue
-        for m in rnd["matches"]:
-            if m.get("settled"):
-                assert m["predicted_winner"] == pred_r32[m["match"]]
+    actual_winner = {m["match"]: m["winner"]
+                     for rnd in bk["actual"]["rounds"]
+                     for m in rnd["matches"] if m.get("settled")}
     for rnd in bk["prediction"]["rounds"]:
         for m in rnd["matches"]:
-            wp = m["prob_a"] if m["winner"] == m["a"] else m["prob_b"]
-            assert wp >= 0.5 - 1e-9
+            if m.get("settled"):
+                # A played tie in the live bracket shows the REAL winner and score,
+                # never the pre-game favourite, so an eliminated side cannot advance.
+                assert m["winner"] == actual_winner[m["match"]]
+                assert "score" in m and "prob_a" not in m
+            else:
+                # An unplayed tie advances the higher-probability side.
+                wp = m["prob_a"] if m["winner"] == m["a"] else m["prob_b"]
+                assert wp >= 0.5 - 1e-9

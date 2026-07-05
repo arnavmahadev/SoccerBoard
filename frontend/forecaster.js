@@ -286,6 +286,15 @@
   }
 
   function predMatch(m) {
+    // A settled tie (already played) is locked to its real score; only ties still
+    // to come show a predicted win percentage.
+    if (m.settled) {
+      const aWin = m.winner === m.a;
+      return `<div class="bk-match"><div class="bk-box">
+        ${bkRow(m.a, `${m.score[0]}`, aWin ? "win" : "")}
+        ${bkRow(m.b, `${m.score[1]}`, aWin ? "" : "win")}
+      </div></div>`;
+    }
     const aWin = m.winner === m.a, bWin = m.winner === m.b;
     return `<div class="bk-match"><div class="bk-box">
       ${bkRow(m.a, pct(m.prob_a), aWin ? "win" : "")}
@@ -322,7 +331,7 @@
     if (state.view === "pretournament_prediction") {
       $("bk-note").innerHTML = `Pre-tournament predictions using base team ratings, before any games were played and with no injury adjustments. Predicted champion: <b>${esc(data.champion)}</b>.`;
     } else if (state.view === "prediction") {
-      $("bk-note").innerHTML = `Live predictions using current ratings with injury adjustments applied. Predicted champion: <b>${esc(data.champion)}</b>. Each percentage is that team's chance of winning that specific game.`;
+      $("bk-note").innerHTML = `Confirmed results are locked in; games still to come are predicted using current ratings with injury and in-tournament form adjustments applied. Predicted champion: <b>${esc(data.champion)}</b>. Each percentage is that team's chance of winning that specific upcoming game.`;
     } else {
       const c = data.correct, d = data.decided;
       $("bk-note").innerHTML = d

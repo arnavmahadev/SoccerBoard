@@ -423,9 +423,12 @@ def _bracket_view(
     cfg: dict, played: dict, mode: str, competition: str = DEFAULT_COMPETITION,
     params: "Params | None" = None,
 ) -> dict:
-    """Build one bracket. mode='prediction' advances each tie's most likely winner
-    (head-to-head); mode='actual' advances the real winners and leaves undecided
-    ties as TBD, flagging whether each result matched the pick. Both use the same
+    """Build one bracket. mode='prediction' locks in the games already played
+    (from `played`) and advances the most likely winner (head-to-head) only for
+    ties still to come, so a team the results show was knocked out never advances;
+    pass played={} for a from-scratch prediction (the pre-tournament view).
+    mode='actual' advances the real winners and leaves undecided ties as TBD,
+    flagging whether each result matched the pick. Both grade against the same
     head-to-head favourite, so the two views never disagree about a pick.
     Pass params to override the default injury-adjusted ratings (e.g. base params
     for a pre-tournament view)."""
@@ -445,13 +448,24 @@ def _bracket_view(
             a, b = winners.get(tree[m][0]), winners.get(tree[m][1])
         entry = {"match": m, "a": a, "b": b}
         if mode == "prediction":
-            # The model's single most likely winner of this tie (head-to-head, in
-            # a neutral knockout), advanced round by round. This is the same rule
-            # the "actual" view grades results against, so the Prediction and
-            # Results views can never disagree about who was picked.
-            pa = _advance_prob(a, b, competition, params=params)
-            winner = a if pa >= 0.5 else b
-            entry.update(prob_a=pa, prob_b=1.0 - pa, winner=winner, settled=False)
+            # Live prediction: lock in ties that have actually been played and only
+            # predict the ones still to come, so a team the results show was
+            # knocked out is never advanced here (its real conqueror carries on
+            # instead). For an unplayed tie, advance the model's single most likely
+            # winner (head-to-head, neutral knockout) — the same rule the "actual"
+            # view grades against, so the two views never disagree about a pick.
+            rec = played.get(frozenset((a, b))) if (a and b) else None
+            if rec:
+                winner = rec["winner"]
+                score = (
+                    [rec["home_goals"], rec["away_goals"]]
+                    if rec["home"] == a else [rec["away_goals"], rec["home_goals"]]
+                )
+                entry.update(winner=winner, score=score, settled=True)
+            else:
+                pa = _advance_prob(a, b, competition, params=params)
+                winner = a if pa >= 0.5 else b
+                entry.update(prob_a=pa, prob_b=1.0 - pa, winner=winner, settled=False)
         else:
             rec = played.get(frozenset((a, b))) if (a and b) else None
             if rec:
@@ -494,10 +508,18 @@ def _bracket_view(
             sf_losers.append(None)
     a3, b3 = (sf_losers + [None, None])[:2]
     if mode == "prediction" and a3 and b3:
-        pa3 = _advance_prob(a3, b3, competition, params=params)
-        w3 = a3 if pa3 >= 0.5 else b3
-        out["third_place"] = {"a": a3, "b": b3, "prob_a": pa3, "prob_b": 1.0 - pa3,
-                              "winner": w3, "settled": False}
+        rec3 = played.get(frozenset((a3, b3)))
+        if rec3:
+            w3 = rec3["winner"]
+            score3 = ([rec3["home_goals"], rec3["away_goals"]]
+                      if rec3["home"] == a3 else [rec3["away_goals"], rec3["home_goals"]])
+            out["third_place"] = {"a": a3, "b": b3, "winner": w3, "score": score3,
+                                  "settled": True}
+        else:
+            pa3 = _advance_prob(a3, b3, competition, params=params)
+            w3 = a3 if pa3 >= 0.5 else b3
+            out["third_place"] = {"a": a3, "b": b3, "prob_a": pa3, "prob_b": 1.0 - pa3,
+                                  "winner": w3, "settled": False}
     elif mode == "actual":
         rec3 = played.get(frozenset((a3, b3))) if (a3 and b3) else None
         if rec3:
@@ -543,12 +565,13 @@ def live_match(
 
 
 def bracket(competition: str, as_of: str | None = None) -> dict:
-    """Three bracket views: pre-tournament predictions (base ratings, no
-    overlay), live predictions (injury- and in-tournament-form-adjusted ratings),
-    and actual results with hit/miss flags. The live views use the same ratings
-    as the live title-odds simulation, so their win-chance numbers and picks are
-    consistent with the odds; the pre-tournament view matches the pre-tournament
-    odds mode."""
+    """Three bracket views: pre-tournament predictions (base ratings, no overlay,
+    every tie predicted from scratch), live predictions (injury- and in-tournament-
+    form-adjusted ratings, with games already played locked to their real result
+    and only the remaining ties predicted), and actual results with hit/miss flags.
+    The live views use the same ratings as the live title-odds simulation, so their
+    win-chance numbers and picks are consistent with the odds; the pre-tournament
+    view matches the pre-tournament odds mode."""
     load()
     cfg = get_competition(competition)
     as_of = as_of or _today()
@@ -566,7 +589,7 @@ def bracket(competition: str, as_of: str | None = None) -> dict:
         "pretournament_prediction": _bracket_view(
             cfg, {}, "prediction", competition=competition, params=_params
         ),
-        "prediction": _bracket_view(cfg, {}, "prediction", competition=competition, params=live),
+        "prediction": _bracket_view(cfg, played, "prediction", competition=competition, params=live),
         "actual": _bracket_view(cfg, played, "actual", competition=competition, params=live),
     }
 
