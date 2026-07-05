@@ -67,7 +67,9 @@
 }
 .news-chip .chev { font-size: 0.85em; opacity: 0.75; }
 .news-chip:hover { border-color: color-mix(in srgb, currentColor 45%, transparent); }
-.news-chip.static, .news-chip.static:hover { cursor: default; border-color: transparent; }
+/* The legend chip sits inline in a sentence, so drop the odds-list left margin
+   that would otherwise open an uneven gap before it. */
+.news-chip.static, .news-chip.static:hover { cursor: default; border-color: transparent; margin-left: 0; }
 .news-panel { display: none; padding: 2px 4px 12px; }
 .news-panel.open { display: block; }
 /* "form" chip reuses the news-chip look; a dotted underline distinguishes an
