@@ -262,17 +262,23 @@
   function renderOdds(sim) {
     state.perf = {};
     (sim.performance || []).forEach((r) => { state.perf[r.team] = r; });
+    // Injury/squad news only bends the live odds — the pre-tournament odds are the
+    // frozen pre-tournament ratings with nothing subtracted — so hide the news
+    // chips, panels and legend on the pre-tournament tab (form is already absent
+    // there because the pre-tournament sim reports no performance rows).
+    const showNews = state.tab === "live";
+    $("adjust-note").style.display = showNews ? "" : "none";
     const top = sim.teams.slice().sort((a, b) => b.champion - a.champion).slice(0, 10);
     const max = top[0].champion || 1;
     $("odds").innerHTML = top.map((r, i) => {
       const open = state.openNews.has(r.team);
       const fopen = state.openForm.has(r.team);
-      const panel = state.adjust[r.team] ? newsPanel(state.adjust[r.team]) : "";
+      const panel = (showNews && state.adjust[r.team]) ? newsPanel(state.adjust[r.team]) : "";
       const fpanel = state.perf[r.team] ? formPanel(state.perf[r.team]) : "";
       return `<div class="odds-item">
         <div class="odds-row ${i === 0 ? "lead-team" : ""}">
           <span class="odds-rank">${i + 1}</span>
-          <span class="odds-name">${flag(r.team)}${esc(r.team)}${adjChip(r.team, open)}${formChip(r.team, fopen)}</span>
+          <span class="odds-name">${flag(r.team)}${esc(r.team)}${showNews ? adjChip(r.team, open) : ""}${formChip(r.team, fopen)}</span>
           <span class="odds-track"><span class="odds-fill" style="width:${(r.champion / max) * 100}%"></span></span>
           <span class="odds-val">${pct(r.champion, r.champion < 0.1 ? 1 : 0)}</span>
         </div>${panel}${fpanel}
