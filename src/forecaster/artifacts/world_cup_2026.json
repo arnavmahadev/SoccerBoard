@@ -779,6 +779,12 @@
         "away": "Brazil",
         "home_goals": 2,
         "away_goals": 1
+      },
+      {
+        "home": "England",
+        "away": "Mexico",
+        "home_goals": 3,
+        "away_goals": 2
       }
     ]
   },
