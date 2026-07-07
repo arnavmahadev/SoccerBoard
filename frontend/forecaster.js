@@ -268,7 +268,11 @@
     // there because the pre-tournament sim reports no performance rows).
     const showNews = state.tab === "live";
     $("adjust-note").style.display = showNews ? "" : "none";
-    const top = sim.teams.slice().sort((a, b) => b.champion - a.champion).slice(0, 10);
+    const ranked = sim.teams.slice().sort((a, b) => b.champion - a.champion);
+    // On the live tab only teams still alive can win the title, so drop eliminated
+    // teams (champion == 0) instead of padding the list to a fixed 10 with sides that
+    // are already out. The pre-knockout tab keeps a full field of 10.
+    const top = (showNews ? ranked.filter((r) => r.champion > 0) : ranked).slice(0, 10);
     const max = top[0].champion || 1;
     $("odds").innerHTML = top.map((r, i) => {
       const open = state.openNews.has(r.team);
