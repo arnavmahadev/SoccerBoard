@@ -749,6 +749,12 @@
         "away_goals": 1
       },
       {
+        "home": "Switzerland",
+        "away": "Algeria",
+        "home_goals": 2,
+        "away_goals": 0
+      },
+      {
         "home": "Australia",
         "away": "Egypt",
         "home_goals": 1,
@@ -761,6 +767,12 @@
         "away": "Cape Verde",
         "home_goals": 3,
         "away_goals": 2
+      },
+      {
+        "home": "Colombia",
+        "away": "Ghana",
+        "home_goals": 1,
+        "away_goals": 0
       },
       {
         "home": "France",
