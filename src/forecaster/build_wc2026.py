@@ -132,6 +132,7 @@ RESULT_OVERRIDES: list[dict] = [
     {"home": "Canada", "away": "Morocco", "home_goals": 0, "away_goals": 3},
     {"home": "Norway", "away": "Brazil", "home_goals": 2, "away_goals": 1},
     {"home": "England", "away": "Mexico", "home_goals": 3, "away_goals": 2},
+    {"home": "Spain", "away": "Portugal", "home_goals": 1, "away_goals": 0},
 ]
 
 STAGES = [
