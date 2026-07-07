@@ -343,7 +343,7 @@
     const isPred = state.view !== "actual";
 
     if (state.view === "pretournament_prediction") {
-      $("bk-note").innerHTML = `Pre-tournament predictions using base team ratings, before any games were played and with no injury adjustments. Predicted champion: <b>${esc(data.champion)}</b>.`;
+      $("bk-note").innerHTML = `Pre-knockout predictions using base team ratings, before the knockout stage began and with no injury adjustments. Predicted champion: <b>${esc(data.champion)}</b>.`;
     } else if (state.view === "prediction") {
       $("bk-note").innerHTML = `Confirmed results are locked in; games still to come are predicted using current ratings with injury and in-tournament form adjustments applied. Predicted champion: <b>${esc(data.champion)}</b>. Each percentage is that team's chance of winning that specific upcoming game.`;
     } else {
