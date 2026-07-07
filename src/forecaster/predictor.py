@@ -471,15 +471,17 @@ def simulation(
     settled = [
         {"teams": sorted(pair), "winner": w} for pair, w in fixed.items()
     ]
-    # Only surface performance nudges for teams in the bracket, still alive (not
-    # knocked out by a settled result), that actually moved. Drops group-stage
-    # non-qualifiers, who played but can never appear in the odds list.
+    # Surface performance nudges for every bracket team still alive (not knocked
+    # out by a settled result). No magnitude gate: a team's form tag stays put as
+    # long as it's alive, rather than flickering on and off as a live recompute
+    # nudges a borderline team across a threshold. A team that has performed to
+    # expectation reads as "barely moves" in the panel, so nothing misleads.
+    # Drops group-stage non-qualifiers, who played but can't appear in the odds list.
     in_bracket = {r["team"] for r in rows}
     eliminated = {t for pair, w in fixed.items() for t in pair if t != w}
     perf = [
         r for r in perf_rows
         if r["team"] in in_bracket and r["team"] not in eliminated
-        and (abs(r["att_delta"]) + abs(r["def_delta"]) >= 0.01)
     ]
     result = {
         "competition": competition,
