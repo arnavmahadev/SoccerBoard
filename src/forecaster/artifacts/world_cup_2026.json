@@ -797,6 +797,12 @@
         "away": "United States",
         "home_goals": 4,
         "away_goals": 1
+      },
+      {
+        "home": "Argentina",
+        "away": "Egypt",
+        "home_goals": 3,
+        "away_goals": 2
       }
     ]
   },
