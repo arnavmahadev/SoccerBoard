@@ -16,6 +16,7 @@ forecast) is static and committed.
 from __future__ import annotations
 
 import json
+import logging
 import math
 import threading
 import time
@@ -101,6 +102,108 @@ def load():
         )
         dp = ARTIFACTS / "player_deltas.json"
         _player_deltas = PlayerDeltas.from_json(dp) if dp.exists() else None
+
+
+def reload_news() -> dict:
+    """Re-read news_items.json into memory (e.g. after scripts/refresh_news.py
+    rewrote it) so a running server picks up the new injuries without a restart.
+    Also drops the player-adjusted params and the simulation cache, since both
+    are derived from the news overlay and would otherwise stay stale."""
+    global _news
+    load()
+    with _lock:
+        _news = (
+            json.loads(NEWS_ITEMS_PATH.read_text()) if NEWS_ITEMS_PATH.exists() else {}
+        )
+        _adj_params.clear()
+        _sim_cache.clear()
+    return _news
+
+
+_news_log = logging.getLogger("forecaster.news")
+_news_autorefresh_started = False
+_NEWS_REFRESH_N = 10000   # Monte-Carlo sims for the top-N ranking in a refresh
+
+
+def refresh_news_overlay(
+    competition: str = DEFAULT_COMPETITION,
+    *,
+    top: int = 10,
+    n: int = _NEWS_REFRESH_N,
+    max_age_days: int | None = None,
+) -> dict:
+    """Scrape the live injury tracker and apply it to the in-memory overlay.
+
+    Runs the same pipeline as scripts/refresh_news.py (rank the top-N by live
+    title odds, fetch + recency-filter their injuries), persists to
+    news_items.json when the filesystem is writable (best effort), and always
+    updates the in-memory overlay + drops the derived caches so a running server
+    reflects it immediately. Raises news_fetch.ApiError on a fetch/parse failure
+    (callers that want fail-open behaviour should catch it)."""
+    from forecaster import news_fetch as nf
+
+    global _news
+    load()
+    kwargs = {} if max_age_days is None else {"max_age_days": max_age_days}
+    teams = nf.top_title_odds_teams(competition, top, n)
+    records = nf.fetch_injuries()
+    teams_news = nf.build_teams_news(records, teams, **kwargs)
+
+    # Persist to the committed file when we can; on a read-only filesystem (e.g.
+    # Hugging Face Spaces) fall back to the in-memory update below.
+    try:
+        nf.write_news(competition, teams_news)
+    except OSError as e:
+        _news_log.info("news_items.json not writable (%s); updating in memory only", e)
+
+    with _lock:
+        doc = dict(_news or {})
+        doc.setdefault("_about", nf.DEFAULT_ABOUT)
+        doc[competition] = {"updated": date.today().isoformat(), "teams": teams_news}
+        _news = doc
+        _adj_params.pop(competition, None)  # force rebuild of injury-adjusted params
+        _sim_cache.clear()
+    return {
+        "competition": competition,
+        "top_teams": teams,
+        "records_fetched": len(records),
+        "teams_with_news_count": len(teams_news),
+        "injuries_kept": sum(len(v) for v in teams_news.values()),
+    }
+
+
+def start_news_autorefresh(
+    interval_seconds: float = 24 * 3600.0,
+    *,
+    competition: str = DEFAULT_COMPETITION,
+    delay_first: float = 8.0,
+) -> None:
+    """Start a daemon thread that refreshes the injury overlay on an interval
+    (default daily) so the deployed app serves fresh injuries to everyone without
+    a manual run or redeploy. Idempotent (a second call is a no-op). Fails open:
+    a scrape/parse error is logged and the last good overlay is kept."""
+    global _news_autorefresh_started
+    with _lock:
+        if _news_autorefresh_started:
+            return
+        _news_autorefresh_started = True
+
+    def _loop() -> None:
+        time.sleep(delay_first)  # let startup settle before the first scrape
+        while True:
+            try:
+                summary = refresh_news_overlay(competition)
+                _news_log.info(
+                    "injury overlay refreshed: %d injuries across %d team(s) — %s",
+                    summary["injuries_kept"], summary["teams_with_news_count"],
+                    ", ".join(summary["top_teams"]),
+                )
+            except Exception as e:  # never let the refresher kill the thread
+                _news_log.warning("injury refresh failed (keeping last overlay): %s", e)
+            time.sleep(interval_seconds)
+
+    threading.Thread(target=_loop, name="news-autorefresh", daemon=True).start()
+    _news_log.info("news auto-refresh started (every %.0f h)", interval_seconds / 3600.0)
 
 
 # --- Player-delta news overlay -----------------------------------------------

@@ -13,6 +13,7 @@ Docs: http://127.0.0.1:8000/docs
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -33,6 +34,24 @@ async def lifespan(app: FastAPI):
     load()  # warm the xG model cache / fail fast if it isn't exported
     try:
         forecaster.load()  # warm the forecaster artifacts (params, config, metrics)
+        # Refresh the injury overlay in-process on an interval (default daily), so
+        # everyone hitting this server gets fresh injuries without a manual
+        # scripts/refresh_news.py run or a redeploy. Disable with
+        # FORECASTER_NEWS_AUTOREFRESH=0; tune cadence with FORECASTER_NEWS_REFRESH_HOURS.
+        if os.environ.get("FORECASTER_NEWS_AUTOREFRESH", "1") != "0":
+            # Surface the refresher's logs through uvicorn's handlers (the root
+            # logger stays at WARNING under uvicorn, which would swallow them).
+            # The "uvicorn" logger owns the default handler; "uvicorn.error" has
+            # none of its own (it propagates), so copy from "uvicorn".
+            import logging
+            news_log = logging.getLogger("forecaster.news")
+            uvicorn_handlers = logging.getLogger("uvicorn").handlers
+            if uvicorn_handlers:
+                news_log.handlers = uvicorn_handlers
+                news_log.propagate = False
+            news_log.setLevel(logging.INFO)
+            hours = float(os.environ.get("FORECASTER_NEWS_REFRESH_HOURS", "24"))
+            forecaster.start_news_autorefresh(interval_seconds=hours * 3600.0)
     except FileNotFoundError:
         pass  # forecaster artifacts not built yet; xG mode still serves
     yield
