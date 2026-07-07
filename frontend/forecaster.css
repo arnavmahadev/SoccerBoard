@@ -38,11 +38,17 @@
 
 /* --- title odds (compact) --------------------------------------------- */
 .odds { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 18px; max-width: 540px; }
-.odds-row { display: grid; grid-template-columns: 18px 1fr 96px 46px; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+.odds-row { display: grid; grid-template-columns: 18px 1fr 54px 54px 96px 46px; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
 .odds-row:last-child { border-bottom: none; }
 .odds-rank { color: var(--text-muted); font-size: 0.74rem; font-variant-numeric: tabular-nums; text-align: center; }
 .odds-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .odds-row.lead-team .odds-name { font-weight: 750; }
+/* Dedicated, fixed-width cells for the news + form chips so every chip lines up
+   in its own column regardless of how long the team name is. The cells are
+   invisible (no border/background) and simply reserve their slot when a team
+   has no chip, keeping the columns aligned all the way down the list. */
+.odds-news, .odds-form { display: flex; align-items: center; min-width: 0; }
+.odds-news .news-chip, .odds-form .form-chip { margin-left: 0; }
 .odds-track { display: block; height: 8px; background: color-mix(in srgb, var(--text) 9%, transparent); border-radius: 4px; overflow: hidden; }
 .odds-fill { display: block; height: 100%; background: var(--acc); border-radius: 4px; }
 .odds-val { text-align: right; font-size: 0.86rem; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -72,17 +78,17 @@
 .news-chip.static, .news-chip.static:hover { cursor: default; border-color: transparent; margin-left: 0; }
 .news-panel { display: none; padding: 2px 4px 12px; }
 .news-panel.open { display: block; }
-/* "form" chip reuses the news-chip look; a dotted underline distinguishes an
-   on-pitch performance nudge from an off-pitch injury-news adjustment. */
+/* "form" chip is styled identically to the news chip, just green: an on-pitch
+   performance nudge (green) vs. an off-pitch injury-news adjustment (red). */
 .form-chip {
   font: inherit; font-size: 0.56rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
-  display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 2px 7px;
-  border-radius: 999px; border: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
-  cursor: pointer; vertical-align: middle; line-height: 1.4; transition: background 0.12s, border-color 0.12s;
-  color: var(--go); background: color-mix(in srgb, var(--go) 12%, transparent);
+  display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; padding: 2px 7px;
+  border-radius: 999px; border: 1px solid transparent; cursor: pointer; vertical-align: middle;
+  line-height: 1.4; transition: background 0.12s, border-color 0.12s;
+  color: var(--go); background: color-mix(in srgb, var(--go) 14%, transparent);
 }
 .form-chip .chev { font-size: 0.85em; opacity: 0.75; }
-.form-chip:hover { border-color: color-mix(in srgb, currentColor 55%, transparent); }
+.form-chip:hover { border-color: color-mix(in srgb, currentColor 45%, transparent); }
 .form-panel { display: none; padding: 2px 4px 12px; }
 .form-panel.open { display: block; }
 .news-items { margin: 0 0 8px; padding-left: 18px; font-size: 0.86rem; line-height: 1.5; }

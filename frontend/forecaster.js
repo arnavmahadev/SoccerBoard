@@ -278,7 +278,9 @@
       return `<div class="odds-item">
         <div class="odds-row ${i === 0 ? "lead-team" : ""}">
           <span class="odds-rank">${i + 1}</span>
-          <span class="odds-name">${flag(r.team)}${esc(r.team)}${showNews ? adjChip(r.team, open) : ""}${formChip(r.team, fopen)}</span>
+          <span class="odds-name">${flag(r.team)}${esc(r.team)}</span>
+          <span class="odds-news">${showNews ? adjChip(r.team, open) : ""}</span>
+          <span class="odds-form">${formChip(r.team, fopen)}</span>
           <span class="odds-track"><span class="odds-fill" style="width:${(r.champion / max) * 100}%"></span></span>
           <span class="odds-val">${pct(r.champion, r.champion < 0.1 ? 1 : 0)}</span>
         </div>${panel}${fpanel}
