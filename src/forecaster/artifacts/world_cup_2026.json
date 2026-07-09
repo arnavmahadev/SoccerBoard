@@ -823,6 +823,12 @@
         "away_goals": 0,
         "winner": "Switzerland",
         "penalty": true
+      },
+      {
+        "home": "France",
+        "away": "Morocco",
+        "home_goals": 2,
+        "away_goals": 0
       }
     ]
   },
