@@ -829,6 +829,18 @@
         "away": "Morocco",
         "home_goals": 2,
         "away_goals": 0
+      },
+      {
+        "home": "Argentina",
+        "away": "Switzerland",
+        "home_goals": 3,
+        "away_goals": 1
+      },
+      {
+        "home": "England",
+        "away": "Norway",
+        "home_goals": 2,
+        "away_goals": 1
       }
     ]
   },
