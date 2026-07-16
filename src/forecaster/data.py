@@ -192,11 +192,18 @@ def load_matches(
             has_score = hg not in ("", "NA", None) and ag not in ("", "NA", None)
             if played_only and not has_score:
                 continue
+            home, away = normalize_team(row["home_team"]), normalize_team(row["away_team"])
+            # The feed schedules a knockout fixture before both sides are known,
+            # naming the undetermined side with the same "NA" null it uses for an
+            # unplayed score. That row isn't a fixture between two teams yet, and
+            # the phantom "NA" team corrupts anything clustering teams by fixture.
+            if home in ("", "NA") or away in ("", "NA"):
+                continue
             out.append(
                 Match(
                     date=d,
-                    home=normalize_team(row["home_team"]),
-                    away=normalize_team(row["away_team"]),
+                    home=home,
+                    away=away,
                     home_goals=int(hg) if has_score else None,
                     away_goals=int(ag) if has_score else None,
                     neutral=str(row.get("neutral", "")).upper() == "TRUE",
