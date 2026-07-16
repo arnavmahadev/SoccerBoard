@@ -206,7 +206,9 @@ def test_api_adjustments_overlay(client):
 def test_player_delta_lowers_scoring():
     """When a player with a positive att_delta is absent, their team's expected
     goals drop by the learned amount. Tests the serving-path mechanism directly
-    by injecting a synthetic PlayerDeltas object."""
+    by injecting a synthetic PlayerDeltas object and a synthetic news overlay --
+    both sides are synthetic so the test exercises the mechanism and never
+    depends on who the live injury tracker happens to list today."""
     from forecaster import predictor as fc
     from forecaster.player_model import PlayerDeltas
 
@@ -221,7 +223,14 @@ def test_player_delta_lowers_scoring():
     )
     old_deltas = fc._player_deltas
     old_adj = dict(fc._adj_params)
+    old_news = fc._news
     fc._player_deltas = synthetic
+    fc._news = {
+        "world_cup_2026": {
+            "updated": "2026-01-01",
+            "teams": {"Spain": [{"player": "Nico Williams", "issue": "test injury"}]},
+        }
+    }
     fc._adj_params.clear()
 
     try:
@@ -231,6 +240,7 @@ def test_player_delta_lowers_scoring():
         assert adj["exp_away"] == pytest.approx(base["exp_away"])  # opponent unchanged
     finally:
         fc._player_deltas = old_deltas
+        fc._news = old_news
         fc._adj_params.clear()
         fc._adj_params.update(old_adj)
 
