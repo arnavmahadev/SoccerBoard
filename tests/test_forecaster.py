@@ -191,16 +191,37 @@ def test_player_model_normalize_and_roundtrip(tmp_path):
 
 
 def test_api_adjustments_overlay(client):
-    """The adjustments endpoint surfaces per-player news items for every team
-    listed in news_items.json, with att_delta / def_delta / covered fields."""
-    adj = client.get("/forecaster/adjustments").json()
-    by_team = {t["team"]: t for t in adj["teams"]}
-    assert len(by_team) >= 2, "overlay should cover multiple teams' news"
-    for t in adj["teams"]:
-        assert t["items"] and all(
-            it["player"] and it["issue"] and "att_delta" in it and "covered" in it
-            for it in t["items"]
-        )
+    """The adjustments endpoint surfaces per-player news items for every team in
+    the overlay, with att_delta / def_delta / covered fields. Injects a synthetic
+    overlay so the test exercises the endpoint mechanism and never depends on who
+    the live injury tracker happens to list today (which can legitimately be
+    empty when no active team has a current injury)."""
+    from forecaster import predictor as fc
+
+    fc.load()
+    old_news = fc._news
+    fc._news = {
+        "world_cup_2026": {
+            "updated": "2026-01-01",
+            "teams": {
+                "Argentina": [{"player": "Lionel Messi", "issue": "knock", "source": "Test", "url": ""}],
+                "Spain": [{"player": "Pedri", "issue": "knock", "source": "Test", "url": ""}],
+            },
+        }
+    }
+    fc._adj_params.pop("world_cup_2026", None)
+    try:
+        adj = client.get("/forecaster/adjustments").json()
+        by_team = {t["team"]: t for t in adj["teams"]}
+        assert len(by_team) >= 2, "overlay should cover multiple teams' news"
+        for t in adj["teams"]:
+            assert t["items"] and all(
+                it["player"] and it["issue"] and "att_delta" in it and "covered" in it
+                for it in t["items"]
+            )
+    finally:
+        fc._news = old_news
+        fc._adj_params.pop("world_cup_2026", None)
 
 
 def test_player_delta_lowers_scoring():
