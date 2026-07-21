@@ -14,10 +14,9 @@
       <div>
         <h1 id="comp-title">World Cup 2026 Forecast</h1>
         <p>A statistical model rates each team's strength and runs 10,000 tournament
-           simulations to figure out who's most likely to win. It updates as games
-           are played. Injury and squad news is checked by hand and the numbers are
-           adjusted when something significant comes up. Adjusted teams are flagged
-           so you can see exactly what changed and why.</p>
+           simulations to figure out who's most likely to win. The 2026 tournament is
+           now complete. Use the stage buttons under the title odds and the bracket to
+           see how the picture shifted from kickoff to the final, stage by stage.</p>
       </div>
       <div class="masthead-actions">
         <nav class="page-nav">
@@ -32,53 +31,31 @@
     <div class="fc-main">
     <p class="asof" id="asof"></p>
 
-    <div class="fc-top">
-      <!-- ===================== WINNER ODDS ===================== -->
-      <section class="block">
-        <h2>Title odds</h2>
-        <p class="lead">Each team's chance of winning the whole tournament. The model runs the tournament 10,000 times and counts how often each team comes out on top.</p>
-        <div class="fc-tabs" id="fc-tabs">
-          <button class="fc-tab" data-tab="pretournament">Pre-tournament</button>
-          <button class="fc-tab active" data-tab="live">Live</button>
+    <!-- ===================== WINNER ODDS ===================== -->
+    <section class="block fc-odds">
+      <h2>Title odds through the tournament</h2>
+      <p class="lead">Each team's chance of winning the whole thing. Pick a stage to see
+        where the odds stood then. Every team's chances are re-simulated after each
+        matchday and each knockout round, locking in the games already decided.</p>
+      <div class="tl" id="tl">
+        <div class="tl-stage">
+          <span class="tl-stage-label" id="tl-stage">·</span>
+          <span class="tl-stage-alive" id="tl-alive"></span>
         </div>
+        <div class="stage-nav" id="tl-ticks"></div>
+        <p class="tl-caption" id="tl-caption"></p>
         <div class="odds" id="odds"></div>
-        <div class="adjust-note" id="adjust-note"></div>
-      </section>
-
-      <!-- ===================== HEAD TO HEAD ===================== -->
-      <section class="block">
-        <h2>Head-to-head</h2>
-        <p class="lead">Pick any two teams and see who the model thinks wins, plus the most likely scoreline.</p>
-        <div class="h2h">
-          <div class="h2h-pick">
-            <select id="h-home" class="fc-select"></select>
-            <span class="h2h-vs">vs</span>
-            <select id="h-away" class="fc-select"></select>
-          </div>
-          <div class="h2h-bar" id="h2h-bar">
-            <div class="seg home"></div><div class="seg draw"></div><div class="seg away"></div>
-          </div>
-          <div class="h2h-legend">
-            <span><b id="h-home-p">·</b> <em id="h-home-n">home</em> win</span>
-            <span><b id="h-draw-p">·</b> draw</span>
-            <span><b id="h-away-p">·</b> <em id="h-away-n">away</em> win</span>
-          </div>
-          <div class="h2h-score">Most likely score <b id="h-score">·</b></div>
-        </div>
-      </section>
-    </div>
+      </div>
+    </section>
 
     <!-- ===================== BRACKETS ===================== -->
     <section class="block">
-      <h2>The bracket</h2>
-      <p class="lead">The model's most likely outcome for every knockout game, alongside
-        how it's actually going. Each percentage is that team's chance of winning that
-        specific game. The highest-probability team advances round by round.</p>
-      <div class="bk-toggle" id="bk-toggle">
-        <button data-view="pretournament_prediction">Pre-knockout</button>
-        <button data-view="prediction" class="active">Live</button>
-        <button data-view="actual">Results</button>
-      </div>
+      <h2>The bracket, stage by stage</h2>
+      <p class="lead">The same run-through as the odds. Pick a stage: every game decided by
+        then is locked to its real result, and the rest is the model's prediction from that
+        point. Start at pre-knockout for the pure prediction, step to the final for the
+        finished bracket. Each percentage is a team's chance of winning that game.</p>
+      <div class="stage-nav" id="bk-stages"></div>
       <div class="bk-note" id="bk-note"></div>
       <div class="bracket-scroll"><div class="bracket" id="bracket"></div></div>
     </section>

@@ -2,26 +2,32 @@
    surface cards, thin borders, one accent used sparingly. No gradients. */
 
 :root {
-  --win:  var(--attacker);    /* home win — blue   */
-  --drw:  #9aa0aa;            /* draw — neutral grey */
-  --los:  var(--defender);    /* away win — orange */
+  --los:  var(--defender);    /* wrong pick / eliminated — orange */
   --go:   var(--pitch);       /* advanced / correct — green */
   --acc:  var(--xg-accent);   /* trophy odds — gold */
 }
 
-/* --- simulation mode tabs -------------------------------------------------- */
-.fc-tabs {
-  display: flex; gap: 3px; padding: 4px;
+/* --- stage stepper (title odds + bracket run-throughs) -------------------- */
+.tl { margin: 14px 0 0; }
+.tl-stage { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.tl-stage-label { font-size: 1.02rem; font-weight: 760; letter-spacing: -0.01em; }
+.tl-stage-alive { font-size: 0.76rem; color: var(--text-muted); font-weight: 600; }
+
+/* a row of stage buttons; wraps on narrow screens */
+.stage-nav {
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin: 0 0 4px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  width: fit-content; margin: 14px 0 16px;
+  width: fit-content; max-width: 100%;
 }
-.fc-tab {
-  font: inherit; font-size: 0.83rem; font-weight: 650; cursor: pointer;
+.stage-btn {
+  font: inherit; font-size: 0.76rem; font-weight: 650; cursor: pointer;
   color: var(--text-muted); background: none; border: 1px solid transparent;
-  border-radius: 9px; padding: 7px 20px; transition: color 0.12s;
+  border-radius: 8px; padding: 6px 13px; transition: color 0.12s, background 0.12s, border-color 0.12s;
 }
-.fc-tab.active { color: var(--text); background: var(--bg); border-color: var(--border); }
-.fc-tab:hover:not(.active) { color: var(--text); }
+.stage-btn:hover:not(.active) { color: var(--text); }
+.stage-btn.active { color: var(--text); background: var(--bg); border-color: var(--border); font-weight: 750; }
+
+.tl-caption { margin: 12px 2px 16px; font-size: 0.86rem; color: var(--text-muted); line-height: 1.55; min-height: 2.4em; }
 
 .asof { margin: 0 0 26px; color: var(--text-muted); font-size: 0.82rem; }
 
@@ -36,82 +42,29 @@
 .block > h2 { margin: 0; font-size: 1.22rem; font-weight: 740; letter-spacing: -0.01em; }
 .lead { margin: 5px 0 16px; color: var(--text-muted); font-size: 0.88rem; }
 
-/* --- title odds (compact) --------------------------------------------- */
-.odds { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 18px; max-width: 540px; }
-.odds-row { display: grid; grid-template-columns: 18px 1fr 54px 54px 96px 46px; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
-.odds-row:last-child { border-bottom: none; }
-.odds-rank { color: var(--text-muted); font-size: 0.74rem; font-variant-numeric: tabular-nums; text-align: center; }
-.odds-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.odds-row.lead-team .odds-name { font-weight: 750; }
-/* Dedicated, fixed-width cells for the news + form chips so every chip lines up
-   in its own column regardless of how long the team name is. The cells are
-   invisible (no border/background) and simply reserve their slot when a team
-   has no chip, keeping the columns aligned all the way down the list. */
-.odds-news, .odds-form { display: flex; align-items: center; min-width: 0; }
-.odds-news .news-chip, .odds-form .form-chip { margin-left: 0; }
-.odds-track { display: block; height: 8px; background: color-mix(in srgb, var(--text) 9%, transparent); border-radius: 4px; overflow: hidden; }
-.odds-fill { display: block; height: 100%; background: var(--acc); border-radius: 4px; }
-.odds-val { text-align: right; font-size: 0.86rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-
-/* page layout: contain the content and run a two-up top row (odds + head to
-   head) so the page uses its width instead of hugging the left edge */
-.fc-main { max-width: var(--page-max); margin: 0 auto; }
-.fc-top { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); gap: 36px; align-items: start; margin: 22px 0 32px; }
-.fc-top .block { margin: 0; }
-@media (max-width: 900px) { .fc-top { grid-template-columns: 1fr; gap: 26px; } }
-
-/* the clickable "news" tag on an adjusted team's odds row + its detail panel */
-.odds { max-width: none; }
+/* --- title odds (timeline roster) ------------------------------------- */
+/* Flex column so each team row can be re-ordered per stage via `order` while its
+   DOM node stays put — the bar widths then transition in place, reading as a
+   bar-chart race rather than the whole list re-rendering under the slider. */
+.odds { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 18px; }
+.odds-item { transition: opacity 0.3s ease; }
 .odds-item:not(:last-child) { border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
-.odds-item .odds-row { border-bottom: none; }
-.news-chip {
-  font: inherit; font-size: 0.56rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
-  display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; padding: 2px 7px;
-  border-radius: 999px; border: 1px solid transparent; cursor: pointer; vertical-align: middle;
-  line-height: 1.4; transition: background 0.12s, border-color 0.12s;
-  color: var(--los); background: color-mix(in srgb, var(--los) 14%, transparent);
-}
-.news-chip .chev { font-size: 0.85em; opacity: 0.75; }
-.news-chip:hover { border-color: color-mix(in srgb, currentColor 45%, transparent); }
-/* The legend chip sits inline in a sentence, so drop the odds-list left margin
-   that would otherwise open an uneven gap before it. */
-.news-chip.static, .news-chip.static:hover { cursor: default; border-color: transparent; margin-left: 0; }
-.news-panel { display: none; padding: 2px 4px 12px; }
-.news-panel.open { display: block; }
-/* "form" chip is styled identically to the news chip, just green: an on-pitch
-   performance nudge (green) vs. an off-pitch injury-news adjustment (red). */
-.form-chip {
-  font: inherit; font-size: 0.56rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
-  display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; padding: 2px 7px;
-  border-radius: 999px; border: 1px solid transparent; cursor: pointer; vertical-align: middle;
-  line-height: 1.4; transition: background 0.12s, border-color 0.12s;
-  color: var(--go); background: color-mix(in srgb, var(--go) 14%, transparent);
-}
-.form-chip .chev { font-size: 0.85em; opacity: 0.75; }
-.form-chip:hover { border-color: color-mix(in srgb, currentColor 45%, transparent); }
-.form-panel { display: none; padding: 2px 4px 12px; }
-.form-panel.open { display: block; }
-.news-items { margin: 0 0 8px; padding-left: 18px; font-size: 0.86rem; line-height: 1.5; }
-.news-items li { margin: 2px 0; }
-.news-items b { font-weight: 700; }
-.news-sparse { color: var(--text-muted); font-size: 0.85em; font-style: italic; }
-.news-impact { margin: 0 0 6px; font-size: 0.84rem; color: var(--text-muted); line-height: 1.5; }
-.news-impact b { color: var(--text); font-weight: 700; }
-.news-src { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
-.news-src a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
-.news-src a:hover { color: var(--go); }
+.odds-item.out { opacity: 0.4; }
+.odds-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 420px) 52px; align-items: center; gap: 18px; padding: 9px 0; }
+.odds-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.odds-item.lead-team .odds-name { font-weight: 750; }
+.odds-track { display: block; height: 8px; background: color-mix(in srgb, var(--text) 9%, transparent); border-radius: 4px; overflow: hidden; }
+.odds-fill { display: block; height: 100%; width: 0; background: var(--acc); border-radius: 4px; transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+.odds-val { text-align: right; font-size: 0.86rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.odds-item.out .odds-val { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
 
-/* short plain-language caption under the title odds */
-.adjust-note { margin: 12px 2px 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.55; }
+/* page layout: contain the content; the title odds run full width so the
+   bar-chart race has room to breathe */
+.fc-main { max-width: var(--page-max); margin: 0 auto; }
+.fc-odds { margin-top: 22px; }
 
 /* --- bracket ----------------------------------------------------------- */
-.bk-toggle { display: inline-flex; gap: 4px; padding: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 11px; margin-bottom: 6px; }
-.bk-toggle button {
-  padding: 7px 14px; font-size: 0.82rem; font-weight: 650; cursor: pointer;
-  color: var(--text-muted); background: none; border: none; border-radius: 8px;
-}
-.bk-toggle button.active { color: var(--text); background: var(--surface); border: 1px solid var(--border); }
-.bk-note { font-size: 0.84rem; color: var(--text-muted); margin: 6px 2px 12px; min-height: 1.1em; }
+.bk-note { font-size: 0.84rem; color: var(--text-muted); margin: 10px 2px 12px; min-height: 1.1em; }
 .bk-note b { color: var(--text); }
 
 .bracket-scroll { overflow-x: auto; padding-bottom: 8px; }
@@ -157,7 +110,6 @@
   gap: 16px; padding: 0 6px;
 }
 .bk-final-content .bk-champ { align-items: center; text-align: center; }
-.bk-final-content .trophy { font-size: 1.8rem; line-height: 1; display: block; margin-bottom: 2px; }
 .bk-center-node .bk-head { padding-bottom: 6px; }
 .bk-center-node .bk-match { flex: none; min-height: 0; padding: 0; }
 .bk-bronze .bk-head { padding-bottom: 6px; }
@@ -173,6 +125,7 @@
 .bk-row + .bk-row { border-top: 1px solid var(--border); }
 .bk-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bk-meta { font-variant-numeric: tabular-nums; font-size: 0.74rem; flex: none; }
+.bk-tag { font-size: 0.56rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); margin-left: 3px; vertical-align: 1px; }
 .bk-row.win { color: var(--text); box-shadow: inset 2px 0 0 var(--go); }
 .bk-row.win .bk-name { font-weight: 700; }
 .bk-row.tbd { color: color-mix(in srgb, var(--text-muted) 60%, transparent); font-style: italic; }
@@ -185,29 +138,6 @@
 .bk-champ .cl { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); font-weight: 700; }
 .bk-champ .cn { font-weight: 780; font-size: 1.1rem; }
 .bk-champ.tbd .cn { color: var(--text-muted); font-weight: 600; }
-
-/* --- head to head ------------------------------------------------------ */
-.fc-select {
-  appearance: none; background: var(--surface); color: var(--text);
-  border: 1px solid var(--border); border-radius: 10px;
-  padding: 9px 30px 9px 12px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
-                    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
-  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
-  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
-}
-.h2h { max-width: none; }
-.h2h-pick { display: flex; align-items: center; gap: 12px; }
-.h2h-pick .fc-select { flex: 1; min-width: 0; }
-.h2h-vs { color: var(--text-muted); font-weight: 700; font-size: 0.8rem; }
-.h2h-bar { display: flex; height: 26px; border-radius: 7px; overflow: hidden; background: var(--bg); margin-top: 16px; }
-.h2h-bar .seg { transition: width 0.3s ease; }
-.h2h-bar .home { background: var(--win); } .h2h-bar .draw { background: var(--drw); } .h2h-bar .away { background: var(--los); }
-.h2h-legend { display: flex; justify-content: space-between; margin-top: 9px; font-size: 0.82rem; color: var(--text-muted); }
-.h2h-legend b { color: var(--text); font-variant-numeric: tabular-nums; }
-.h2h-legend em { font-style: normal; }
-.h2h-score { margin-top: 11px; font-size: 0.85rem; color: var(--text-muted); }
-.h2h-score b { color: var(--text); font-variant-numeric: tabular-nums; }
 
 /* --- groups (explicit predictions) ------------------------------------ */
 .groups { display: flex; flex-wrap: wrap; justify-content: center; gap: 13px; }
