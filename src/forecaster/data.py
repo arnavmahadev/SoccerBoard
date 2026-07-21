@@ -132,11 +132,40 @@ class Match:
 
 
 # --- Loading -----------------------------------------------------------------
+def _csv_stats(path: Path) -> tuple[int, str]:
+    """(dated-row count, newest date) of a results CSV — the signature used to
+    reject a download that would regress the cache. Raises if the file isn't a
+    usable results feed (unparseable, no `date` column, or no dated rows), so a
+    garbage response (e.g. an HTML error page) never passes validation."""
+    n, max_date = 0, ""
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames or "date" not in reader.fieldnames:
+            raise ValueError("results CSV missing 'date' column")
+        for row in reader:
+            d = row["date"]
+            if d:
+                n += 1
+                if d > max_date:
+                    max_date = d
+    if n == 0:
+        raise ValueError("results CSV has no dated rows")
+    return n, max_date
+
+
 def fetch_results(force: bool = False, ttl_seconds: float = 3600.0) -> Path:
     """Download the latest results CSV into the cache. Returns the path actually
     used. Falls back to the committed snapshot if the network is unavailable so
     the app always has data offline. `ttl_seconds` skips re-download if the cache
-    is fresh — this is the knob the live serving layer leans on."""
+    is fresh — this is the knob the live serving layer leans on.
+
+    The download is validated and swapped in atomically. The feed is date-sorted
+    ascending, so a truncated or rolled-back response silently drops its newest
+    rows — the current tournament — which used to blank live results until the
+    next clean fetch. Such a response (smaller row count or an older newest date
+    than the current cache) is now rejected in favour of the existing cache, and
+    a good download replaces the cache via an atomic rename, so a bad fetch can
+    never corrupt or partially overwrite it."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     fresh = (
         CACHE_PATH.exists()
@@ -146,7 +175,25 @@ def fetch_results(force: bool = False, ttl_seconds: float = 3600.0) -> Path:
         return CACHE_PATH
     try:
         with urllib.request.urlopen(RESULTS_URL, timeout=20) as resp:
-            CACHE_PATH.write_bytes(resp.read())
+            body = resp.read()
+        fd, tmp_name = tempfile.mkstemp(dir=CACHE_DIR, prefix="results.", suffix=".tmp")
+        tmp = Path(tmp_name)
+        try:
+            with open(fd, "wb") as fh:
+                fh.write(body)
+            new_n, new_max = _csv_stats(tmp)  # rejects a garbage/empty download
+            try:
+                cur_n, cur_max = _csv_stats(CACHE_PATH) if CACHE_PATH.exists() else (0, "")
+            except Exception:
+                cur_n, cur_max = 0, ""  # unreadable cache: let the fresh download replace it
+            if new_max < cur_max or new_n < cur_n * 0.9:
+                raise ValueError(
+                    f"rejecting feed regression: rows {new_n} vs {cur_n}, "
+                    f"newest {new_max!r} vs {cur_max!r}"
+                )
+            tmp.replace(CACHE_PATH)  # atomic on the same filesystem
+        finally:
+            tmp.unlink(missing_ok=True)
         return CACHE_PATH
     except Exception:
         if CACHE_PATH.exists():
