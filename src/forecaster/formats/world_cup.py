@@ -197,6 +197,7 @@ class WorldCupFormat:
                 "home": home, "away": away,
                 "home_goals": r["home_goals"], "away_goals": r["away_goals"],
                 **({"penalty": True} if r.get("penalty") else {}),
+                **({"aet": True} if r.get("aet") else {}),
             }
         return out
 
