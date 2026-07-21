@@ -5,12 +5,13 @@ Produces under forecaster/artifacts/:
   - world_cup_2026.json   competition config (groups, fixtures, knockout bracket)
   - params.json           frozen pre-tournament Dixon-Coles fit
   - group_forecast.json   pre-tournament P(win group)/P(advance) per team
+  - title_odds_timeline.json  champion odds by tournament stage (slider replay)
   - metrics.json          backtest log-loss / Brier / calibration / baseline
   - results_snapshot.csv  trimmed offline fallback for the match-results feed
 
-The live knockout simulation is intentionally NOT committed — it's recomputed
-from the latest results on each request (the live behaviour). A committed
-snapshot would just go stale.
+The title-odds timeline is committed because the tournament is over, so it's
+static (like the group forecast). During the tournament the live knockout
+simulation was recomputed from the latest results on each request instead.
 
 Run:  python -m forecaster.build_artifacts
 """
@@ -20,7 +21,7 @@ from __future__ import annotations
 import csv
 import json
 
-from forecaster import build_wc2026, dixon_coles as dc, evaluate
+from forecaster import build_timeline, build_wc2026, dixon_coles as dc, evaluate
 from forecaster.data import (
     ARTIFACTS,
     SNAPSHOT_SINCE,
@@ -95,6 +96,14 @@ def main() -> None:
                 writer.writerow(row)
                 kept += 1
     print(f"  snapshot rows: {kept}")
+
+    print("\nBuilding title-odds timeline (champion odds by stage)...")
+    timeline = build_timeline.build(cfg["id"])
+    (ARTIFACTS / "title_odds_timeline.json").write_text(
+        json.dumps(timeline, indent=2, ensure_ascii=False)
+    )
+    print(f"  champion: {timeline['champion']}, {len(timeline['checkpoints'])} checkpoints")
+
     print("\nDone. Artifacts written to", ARTIFACTS)
 
 

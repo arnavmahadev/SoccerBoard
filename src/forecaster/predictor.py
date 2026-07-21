@@ -499,6 +499,233 @@ def simulation(
     return result
 
 
+# --- Title-odds timeline (retrospective, tournament complete) -----------------
+# How the champion odds moved as the tournament actually unfolded. At each
+# checkpoint we take the frozen pre-tournament ratings, bend them by how each side
+# had *played up to that point* (the same in-tournament form overlay the live sim
+# used), lock in every knockout tie decided so far, and simulate the rest. So the
+# early checkpoints are near the pre-tournament odds and each knockout round
+# collapses the field further, until the final leaves the real champion at 100%.
+# Injury news is intentionally NOT applied: that overlay is a live "who's fit now"
+# adjustment, and replaying it against past checkpoints would be anachronistic —
+# the timeline is a pure results-driven replay. Committed as an artifact
+# (title_odds_timeline.json) because it's static now the tournament is over.
+
+TIMELINE_PATH = ARTIFACTS / "title_odds_timeline.json"
+_KO_ROUND_ORDER = ["round_of_32", "round_of_16", "quarterfinal", "semifinal", "final"]
+
+# (key, label, group-form cutoff [None=none, "md"=matchday date, "all"=whole group
+#  stage], completed knockout rounds fed into the fixed bracket + form overlay)
+_TIMELINE_SPEC = [
+    ("pre",   "Pre-tournament",       None, []),
+    ("md1",   "After Matchday 1",     0,    []),
+    ("md2",   "After Matchday 2",     1,    []),
+    ("group", "After Group Stage",    "all", []),
+    ("r32",   "After Round of 32",    "all", ["round_of_32"]),
+    ("r16",   "After Round of 16",    "all", ["round_of_32", "round_of_16"]),
+    ("qf",    "After Quarter-finals", "all", ["round_of_32", "round_of_16", "quarterfinal"]),
+    ("sf",    "After Semi-finals",    "all", ["round_of_32", "round_of_16", "quarterfinal", "semifinal"]),
+    ("final", "Champion",             "all", _KO_ROUND_ORDER),
+]
+
+_timeline_cache: dict[tuple, tuple[float, dict]] = {}
+_TIMELINE_TTL = _REALITY_TTL  # static once built; long TTL for the compute fallback
+
+# Which checkpoint's ratings a knockout round's ✓/✗ is graded against: the stage
+# right before that round was played, i.e. the exact ratings the run-through used
+# to *predict* that round. Grading a result against the prediction that was
+# standing when it kicked off means the ✓/✗ can never contradict the winner the
+# bracket had projected (e.g. the final is judged on the semi-final-stage ratings
+# that named Spain, so Spain lifting the trophy reads as a correct call, not a miss).
+_GRADE_STAGE = {
+    "round_of_32": "group",
+    "round_of_16": "r32",
+    "quarterfinal": "r16",
+    "semifinal": "qf",
+    "final": "sf",
+}
+
+
+def _resolve_knockout_rounds(cfg: dict, played_ko: dict) -> dict[str, list[tuple]]:
+    """Walk the bracket so each played knockout tie is tagged with the round it
+    belongs to: {round_name: [(frozenset(pair), record), ...]} in bracket order."""
+    ko = cfg["knockout"]
+    r32 = {f["match"]: tuple(f["teams"]) for f in ko["round_of_32"]}
+    tree = {int(k): v for k, v in ko["tree"].items()}
+    match_round = {m: r for r, ms in ko["rounds"].items() for m in ms}
+    order = sorted(set(r32) | set(tree))
+    winners: dict[int, str] = {}
+    by_round: dict[str, list[tuple]] = {r: [] for r in _KO_ROUND_ORDER}
+    for m in order:
+        a, b = r32[m] if m in r32 else (winners.get(tree[m][0]), winners.get(tree[m][1]))
+        if not a or not b:
+            continue
+        rec = played_ko.get(frozenset((a, b)))
+        if not rec:
+            continue
+        winners[m] = rec["winner"]
+        by_round[match_round[m]].append((frozenset((a, b)), rec))
+    return by_round
+
+
+def _matchday_cutoffs(cfg: dict, feed_matches: list[Match]) -> list[str]:
+    """ISO dates by which group matchday 1 and matchday 2 are complete, derived from
+    the fixture calendar (each of the 3 matchdays is a third of the group games)."""
+    group_pairs = {frozenset((f["home"], f["away"])) for f in cfg["group_fixtures"]}
+    dates = sorted(
+        m.date for m in feed_matches
+        if m.played and frozenset((m.home, m.away)) in group_pairs
+    )
+    end = cfg.get("group_stage_end", dates[-1] if dates else "")
+    if len(dates) < 3:
+        return [end, end]
+    per = len(dates) // 3  # 24 of 72
+    return [dates[per - 1], dates[2 * per - 1]]
+
+
+def compute_timeline(cfg: dict, base: Params, matches: list[Match], n: int = 10000) -> dict:
+    """Champion-odds snapshots at each stage of the tournament. Pure/offline: given
+    the config, the frozen ratings and the tournament's matches, it replays the
+    title odds checkpoint by checkpoint. Used both to build the committed artifact
+    and as the live fallback if that artifact is missing."""
+    group_pairs = {frozenset((f["home"], f["away"])) for f in cfg["group_fixtures"]}
+    played_group = [
+        m for m in matches
+        if m.played and frozenset((m.home, m.away)) in group_pairs
+    ]
+    played_ko = WorldCupFormat.knockout_played(cfg, matches)
+    by_round = _resolve_knockout_rounds(cfg, played_ko)
+    # The third-place playoff isn't a node in the knockout tree (its winner feeds
+    # nothing), so it's the one played tie not tagged to a round. Pull it out so it
+    # can be locked into the bracket at the final stage, when it's actually played.
+    _bracket_pairs = {pair for r in _KO_ROUND_ORDER for pair, _ in by_round[r]}
+    third_rec = next((rec for pair, rec in played_ko.items() if pair not in _bracket_pairs), None)
+    md_cuts = _matchday_cutoffs(cfg, matches)
+    tlabel = cfg["tournament_label"]
+    qualifiers = {t for f in cfg["knockout"]["round_of_32"] for t in f["teams"]}
+    group_of = {t: g for g, members in cfg["groups"].items() for t in members}
+
+    def ko_as_matches(round_name: str) -> list[Match]:
+        return [
+            Match(date=cfg.get("group_stage_end", ""), home=rec["home"], away=rec["away"],
+                  home_goals=rec["home_goals"], away_goals=rec["away_goals"],
+                  neutral=True, tournament=tlabel)
+            for _pair, rec in by_round[round_name]
+        ]
+
+    checkpoints = []
+    params_by_key: dict[str, Params] = {}
+    for key, label, form_cut, ko_rounds in _TIMELINE_SPEC:
+        # Games feeding the in-tournament form overlay for this checkpoint.
+        played: list[Match] = []
+        if form_cut == "all":
+            played += played_group
+        elif form_cut is not None:  # matchday index into md_cuts
+            cutoff = md_cuts[form_cut]
+            played += [m for m in played_group if m.date <= cutoff]
+        for r in ko_rounds:
+            played += ko_as_matches(r)
+
+        params = base if not played else _performance_overlay(base, played)[0]
+        params_by_key[key] = params
+
+        fixed = {pair: rec["winner"] for r in ko_rounds for pair, rec in by_round[r]}
+        fmt = WorldCupFormat(cfg, fixed_results=fixed)
+        raw = monte_carlo(fmt, MatchSampler(params, upset=KNOCKOUT_UPSET), n=n, seed=12345)
+
+        rows = [{"team": t, "group": group_of.get(t), **probs}
+                for t, probs in raw["teams"].items()]
+        rows.sort(key=lambda r: (-r.get("champion", 0), -r.get("final", 0)))
+
+        eliminated = {t for pair, w in fixed.items() for t in pair if t != w}
+        alive = sorted(qualifiers - eliminated)
+
+        # Games decided in the most recent knockout round (for the "what happened"
+        # strip). Group matchdays decide 24 games at once, too many to list, so the
+        # strip is knockout-only; group checkpoints lean on the caption instead.
+        newest = ko_rounds[-1] if ko_rounds else None
+        decided = [
+            {"home": rec["home"], "away": rec["away"],
+             "home_goals": rec["home_goals"], "away_goals": rec["away_goals"],
+             "winner": rec["winner"], "note": _result_note(rec)}
+            for _pair, rec in (by_round[newest] if newest else [])
+        ]
+
+        # Per-stage bracket: the same run-through as the odds. Every knockout tie
+        # decided by this stage is locked to its real result; the rest is predicted
+        # on the stage's ratings. So it starts as the pure pre-tournament bracket and
+        # ends as the finished result, and prediction and result always line up on the
+        # games actually played. Locked ties are graded (✓/✗) against the frozen
+        # pre-tournament ratings, so the grade reflects the original prediction.
+        played_upto = {pair: rec for r in ko_rounds for pair, rec in by_round[r]}
+        # The third-place game is decided alongside the final, so lock it in only
+        # once the final round is in play; earlier stages still predict it.
+        if "final" in ko_rounds and third_rec is not None:
+            played_upto[frozenset((third_rec["home"], third_rec["away"]))] = third_rec
+        # Grade each locked round against the ratings that predicted it (the stage
+        # before it was played), so a result never contradicts the projection the
+        # bracket showed for that tie the stage before. Sources are all earlier
+        # checkpoints, so they're already in params_by_key by the time we need them.
+        grade_by_round = {
+            rnd: params_by_key[src] for rnd, src in _GRADE_STAGE.items() if src in params_by_key
+        }
+        bracket = _bracket_view(
+            cfg, played_upto, "prediction", cfg["id"],
+            params=params, grade_params_by_round=grade_by_round,
+        )
+
+        checkpoints.append({
+            "key": key, "label": label,
+            "caption": _timeline_caption(key, label, len(alive), rows),
+            "alive": len(alive), "teams": rows, "decided": decided, "bracket": bracket,
+        })
+
+    champion = checkpoints[-1]["teams"][0]["team"] if checkpoints[-1]["teams"] else None
+    return {
+        "competition": cfg["id"], "name": cfg["name"], "n": n,
+        "champion": champion, "stages": _KO_ROUND_ORDER, "checkpoints": checkpoints,
+    }
+
+
+def _timeline_caption(key: str, label: str, alive: int, rows: list[dict]) -> str:
+    """One-line plain-English read of a checkpoint for the stage caption."""
+    lead = rows[0]["team"] if rows else "the field"
+    if key == "pre":
+        return f"Before a ball is kicked. The pre-tournament model makes {lead} the favourite."
+    if key in ("md1", "md2"):
+        n = 1 if key == "md1" else 2
+        return (f"Group matchday {n} complete. The ratings pick up each side's early form, "
+                f"but the field is still wide open.")
+    if key == "group":
+        return "Group stage done. The 32 qualifiers head into the Round of 32."
+    if key == "final":
+        return f"{lead} are champions of the world."
+    return f"{label.replace('After ', '')} complete. {alive} teams still standing."
+
+
+def timeline(competition: str = DEFAULT_COMPETITION, n: int = 10000) -> dict:
+    """Champion-odds timeline for the frontend slider. Serves the committed
+    artifact when present (fast, offline, deterministic); otherwise computes it
+    live from the latest feed and caches it."""
+    load()
+    if TIMELINE_PATH.exists():
+        try:
+            return json.loads(TIMELINE_PATH.read_text())
+        except (OSError, json.JSONDecodeError):
+            pass  # fall through to a live compute
+    key = (competition, n)
+    cached = _timeline_cache.get(key)
+    if cached and (time.time() - cached[0]) < _TIMELINE_TTL:
+        return cached[1]
+    cfg = get_competition(competition)
+    matches = tournament_matches(
+        cfg["tournament_label"], cfg["season_year"], prefer_live=True, ttl_seconds=LIVE_TTL,
+    )
+    result = compute_timeline(cfg, _params, matches, n=n)
+    _timeline_cache[key] = (time.time(), result)
+    return result
+
+
 _ROUND_LABELS = {
     "round_of_32": "Round of 32",
     "round_of_16": "Round of 16",
@@ -524,24 +751,48 @@ def _advance_prob(
 _BRACKET_ROUNDS = ["round_of_32", "round_of_16", "quarterfinal", "semifinal", "final"]
 
 
+def _result_note(rec: dict) -> str:
+    """Short tag for how a settled knockout tie was decided ('pens'/'AET'), so the
+    bracket can flag a shootout or extra-time result whose scoreline alone (e.g. a
+    1-1 won on penalties) wouldn't otherwise show a winner."""
+    if rec.get("penalty"):
+        return "pens"
+    if rec.get("aet"):
+        return "AET"
+    return ""
+
+
 def _bracket_view(
     cfg: dict, played: dict, mode: str, competition: str = DEFAULT_COMPETITION,
-    params: "Params | None" = None,
+    params: "Params | None" = None, grade_params: "Params | None" = None,
+    grade_params_by_round: "dict[str, Params] | None" = None,
 ) -> dict:
     """Build one bracket. mode='prediction' locks in the games already played
     (from `played`) and advances the most likely winner (head-to-head) only for
     ties still to come, so a team the results show was knocked out never advances;
-    pass played={} for a from-scratch prediction (the pre-tournament view).
+    pass played={} for a from-scratch prediction (the pre-tournament view). This is
+    also the per-stage run-through: as more rounds land in `played`, more of the
+    bracket switches from predicted to real, until at the end it is the full result.
     mode='actual' advances the real winners and leaves undecided ties as TBD,
     flagging whether each result matched the pick. Both grade against the same
     head-to-head favourite, so the two views never disagree about a pick.
     Pass params to override the default injury-adjusted ratings (e.g. base params
-    for a pre-tournament view)."""
+    for a pre-tournament view). A settled tie's ✓/✗ is judged against grade_params
+    (defaults to params), or against grade_params_by_round[round] when given — pass
+    the per-round pre-game ratings so each result is graded against the very
+    prediction that was standing before it was played, and the ✓/✗ can never
+    contradict the winner the bracket had projected for that tie."""
     ko = cfg["knockout"]
     r32 = {f["match"]: tuple(f["teams"]) for f in ko["round_of_32"]}
     tree = {int(k): v for k, v in ko["tree"].items()}
     match_round = {m: r for r, ms in ko["rounds"].items() for m in ms}
     order = sorted(set(r32) | set(tree))
+    grade_params = grade_params if grade_params is not None else params
+
+    def _grade_p(round_name: str) -> "Params | None":
+        if grade_params_by_round and round_name in grade_params_by_round:
+            return grade_params_by_round[round_name]
+        return grade_params
 
     winners: dict[int, str | None] = {}
     built: dict[int, dict] = {}
@@ -566,7 +817,12 @@ def _bracket_view(
                     [rec["home_goals"], rec["away_goals"]]
                     if rec["home"] == a else [rec["away_goals"], rec["home_goals"]]
                 )
-                entry.update(winner=winner, score=score, settled=True)
+                pg = _advance_prob(a, b, competition, params=_grade_p(match_round[m]))
+                pred = a if pg >= 0.5 else b
+                decided += 1
+                correct += int(winner == pred)
+                entry.update(winner=winner, score=score, settled=True, note=_result_note(rec),
+                             predicted_winner=pred, correct=winner == pred)
             else:
                 pa = _advance_prob(a, b, competition, params=params)
                 winner = a if pa >= 0.5 else b
@@ -584,7 +840,7 @@ def _bracket_view(
                 hit = winner == pred
                 decided += 1
                 correct += int(hit)
-                entry.update(winner=winner, score=score, settled=True,
+                entry.update(winner=winner, score=score, settled=True, note=_result_note(rec),
                              predicted_winner=pred, correct=hit)
             else:
                 winner = None
@@ -596,10 +852,8 @@ def _bracket_view(
         {"round": r, "label": _ROUND_LABELS[r], "matches": [built[m] for m in ko["rounds"][r]]}
         for r in _BRACKET_ROUNDS
     ]
-    out = {"champion": winners.get(ko["final_match"]), "rounds": rounds}
-    if mode == "actual":
-        out["correct"] = correct
-        out["decided"] = decided
+    out = {"champion": winners.get(ko["final_match"]), "rounds": rounds,
+           "correct": correct, "decided": decided}
 
     # Third place match: losers of the two semifinals.
     sf_matches = ko["rounds"]["semifinal"]
@@ -618,8 +872,11 @@ def _bracket_view(
             w3 = rec3["winner"]
             score3 = ([rec3["home_goals"], rec3["away_goals"]]
                       if rec3["home"] == a3 else [rec3["away_goals"], rec3["home_goals"]])
+            pg3 = _advance_prob(a3, b3, competition, params=_grade_p("final"))
+            pred3 = a3 if pg3 >= 0.5 else b3
             out["third_place"] = {"a": a3, "b": b3, "winner": w3, "score": score3,
-                                  "settled": True}
+                                  "settled": True, "note": _result_note(rec3),
+                                  "predicted_winner": pred3, "correct": w3 == pred3}
         else:
             pa3 = _advance_prob(a3, b3, competition, params=params)
             w3 = a3 if pa3 >= 0.5 else b3
@@ -634,8 +891,8 @@ def _bracket_view(
             pa3 = _advance_prob(a3, b3, competition, params=params)
             pred3 = a3 if pa3 >= 0.5 else b3
             out["third_place"] = {"a": a3, "b": b3, "winner": w3, "score": score3,
-                                  "settled": True, "predicted_winner": pred3,
-                                  "correct": w3 == pred3}
+                                  "settled": True, "note": _result_note(rec3),
+                                  "predicted_winner": pred3, "correct": w3 == pred3}
         else:
             out["third_place"] = {"a": a3, "b": b3, "winner": None, "settled": False}
 

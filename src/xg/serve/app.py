@@ -183,6 +183,16 @@ def forecaster_metrics(competition: str = "world_cup_2026") -> dict:
     return forecaster.metrics(competition)
 
 
+@app.get("/forecaster/timeline")
+def forecaster_timeline(competition: str = "world_cup_2026") -> dict:
+    """Champion-odds snapshots at each stage of the tournament (pre-tournament,
+    each group matchday, each knockout round) for the title-odds slider."""
+    try:
+        return forecaster.timeline(competition)
+    except KeyError:
+        raise HTTPException(404, f"Unknown competition: {competition}")
+
+
 # Serve the interactive frontend at "/" (mounted last so the API routes above
 # and the auto docs take precedence). html=True serves index.html (the
 # Forecaster landing page) at the root; the xG board lives at /xg.html.
